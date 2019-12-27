@@ -58,10 +58,13 @@ struct NES
     NESGamepad gamepad;
 };
 
+const u32 NES_FRAMEBUFFER_WIDTH = 256;
+const u32 NES_FRAMEBUFFER_HEIGHT = 240;
+
 struct NESContext
 {
-    u32 screenWidth;
-    u32 screenHeight;
+    u32 frameBufferTextId;
+    u32 backbuffer[ NES_FRAMEBUFFER_WIDTH *  NES_FRAMEBUFFER_HEIGHT ];
     NES nes;
     u32 deltaCycles; // cycles in current frame
     u32 totalCycles; // total cycle count

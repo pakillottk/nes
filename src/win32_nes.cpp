@@ -128,8 +128,26 @@ OpenFileDialog(char *path)
     return GetOpenFileNameA( &ofn );
 }
 
+internal void 
+SwapNesBackbuffer(NESContext *nesContext)
+{
+    // Fill the texture
+    glBindTexture(GL_TEXTURE_2D, nesContext->frameBufferTextId);
+    glTexImage2D(   
+        GL_TEXTURE_2D, 
+        0, 
+        GL_RGBA8, 
+        NES_FRAMEBUFFER_WIDTH,
+        NES_FRAMEBUFFER_HEIGHT,
+        0,
+        GL_RGBA, 
+        GL_UNSIGNED_BYTE, 
+        nesContext->backbuffer
+    );
+}
+
 internal bool8
-Win32_MakeOpenGlContext(HWND Window)
+Win32_MakeOpenGlContext(HWND Window, NESContext *nesContext)
 {
     PIXELFORMATDESCRIPTOR pfd =
     {
@@ -173,6 +191,24 @@ Win32_MakeOpenGlContext(HWND Window)
         return(false);
     }
 
+    // we want to render in screen space
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    
+    glGenTextures(1, &nesContext->frameBufferTextId);
+    
+    // generate a pitch black backbuffer
+    ZeroMemory( nesContext->backbuffer, sizeof(nesContext->backbuffer) );    
+    SwapNesBackbuffer(nesContext); 
+
+    // Config the texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Linear Filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Linear Filtering
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
     return(true);
 }
 
@@ -201,10 +237,27 @@ Win32_InitializeImGui(HWND Window)
 }
 
 internal void
-Win32_RenderOGL()
+Win32_RenderOGL(NESContext *nesContext)
 {
     glClearColor( 0.0, 0.0, 0.0, 1.0 );
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glEnable(GL_TEXTURE_2D);
+    SwapNesBackbuffer(nesContext);
+
+    glBegin(GL_QUADS);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex3f(-1.0f,-1.0f, -1.0f);
+
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex3f( 1.0f,-1.0f, -1.0f);
+
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex3f( 1.0f, 1.0f, -1.0f);
+
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex3f(-1.0f, 1.0f, -1.0f);
+    glEnd();
 }
 
 internal bool8
@@ -252,7 +305,7 @@ WindowProc(HWND   Window,
     {
         case WM_CREATE:
         {
-            if( !Win32_MakeOpenGlContext(Window)    
+            if( !Win32_MakeOpenGlContext(Window, &gNesCtx)    
                 || !Win32_InitializeImGui(Window))
             {
                 // exit the app if this fails...                
@@ -294,7 +347,7 @@ WindowProc(HWND   Window,
             gNesCode.update(&gNesCtx);
 
             // render the nes framebuffer
-            Win32_RenderOGL();    
+            Win32_RenderOGL( &gNesCtx );    
 
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplWin32_NewFrame();            
@@ -305,7 +358,7 @@ WindowProc(HWND   Window,
             {
                 PostQuitMessage(0);
             }
-            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());           
 
             SwapBuffers(dc);
         }
@@ -332,7 +385,7 @@ WinMain(HINSTANCE hInstance,
     wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
-    wc.hIcon = (HICON)LoadImageA( // returns a HANDLE so we have to cast to HICON
+    wc.hIcon = (HICON)LoadImageA(     // returns a HANDLE so we have to cast to HICON
                     NULL,             // hInstance must be NULL when loading from a file
                     "data/nes.ico",   // the icon file name
                     IMAGE_ICON,       // specifies that the file is an icon
