@@ -1,9 +1,10 @@
-#define NES_IMPLEMENTATION
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#define NES_IMPLEMENTATION
 #include "nes.h"
 
+#include "nes_ppu.cpp"
 #include "nes_bus.cpp"
 #include "nes_cpu.cpp"
 
@@ -25,9 +26,11 @@ LoadROM(const char *romPath, NESCartridge *cartridge)
         // read ROM header info
         byte pgrSize16K = fgetc(fp);
         byte chrSize8K  = fgetc(fp);
-        byte flags6     = fgetc(fp);
-        u32  mapper     = fgetc(fp) | (flags6 >>4);
+        byte mapper1    = fgetc(fp);
+        byte mapper2   = fgetc(fp);
         fseek( fp, 16, SEEK_SET );
+
+        cartridge->mirror = (mapper1 & 0x01) ? kVertical : kHorizontal;
         
         // buffer the ROM
         cartridge->pages = 8 * pgrSize16K;
@@ -55,7 +58,8 @@ NES_INIT(NES_Init)
 
     if( LoadROM(romPath, &context->nes.cartridge) )
     {
-        InitializeCPU(&context->nes.cpu, &context->nes);    
+        InitializeCPU(&context->nes.cpu, &context->nes); 
+        InitializePPU(&context->nes.ppu);
     }
 }
 
@@ -64,6 +68,7 @@ NES_UPDATE(NES_Update)
     if( context->nes.cartridge.loaded && context->runMode != kPause )
     {        
         UpdateCPU(&context->nes.cpu, context);
+        UpdatePPU(&context->nes.ppu, context);
         if( context->runMode == kStep ) 
         {
             context->runMode = kPause;

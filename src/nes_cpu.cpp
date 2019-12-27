@@ -233,206 +233,204 @@ Evaluate(byte opcode, NESContext *context)
     byte &P = context->nes.cpu.P.flags;
 
     #define OP(OPCODE, LABEL, CYCLES, MODE) case OPCODE:\
-        {operand = CalcOperand(context, &context->nes, MODE); I.opcode = OPCODE; I.label = LABEL; I.addr_mode = MODE; I.cycles = CYCLES;}\
-        break;
-    
+        operand = CalcOperand(context, &context->nes, MODE); I.opcode = OPCODE; I.label = LABEL; I.addr_mode = MODE; I.cycles = CYCLES;\
 
     switch(opcode)
     {
         //  OPCODE      LABEL         CYCLES     ADDR_MODE                         TASKS
        //====================================================================================================================                      
        // ADC
-        OP( 0x69,         "adc #",        2,    IMMEDIATE){                                                               ADC()}
-        OP( 0x65,       "adc zpg",        3,          ZPG){                                                        READ() ADC()}
-        OP( 0x75,     "adc zpg,X",        4,        ZPG_X){                                                        READ() ADC()}
-        OP( 0x6d,       "adc abs",        4,          ABS){                                                        READ() ADC()}
-        OP( 0x7d,     "adc abs,X",        4,        ABS_X){                                                        READ() ADC()}
-        OP( 0x79,     "adc abs,Y",        4,        ABS_Y){                                                        READ() ADC()}
-        OP( 0x61,     "adc ind,X",        6,        X_IND){                                                        READ() ADC()}
-        OP( 0x71,     "adc ind,Y",        5,        IND_Y){                                                        READ() ADC()}
+        OP( 0x69,         "adc #",        2,    IMMEDIATE){                                                               ADC()}break;
+        OP( 0x65,       "adc zpg",        3,          ZPG){                                                        READ() ADC()}break;
+        OP( 0x75,     "adc zpg,X",        4,        ZPG_X){                                                        READ() ADC()}break;
+        OP( 0x6d,       "adc abs",        4,          ABS){                                                        READ() ADC()}break;
+        OP( 0x7d,     "adc abs,X",        4,        ABS_X){                                                        READ() ADC()}break;
+        OP( 0x79,     "adc abs,Y",        4,        ABS_Y){                                                        READ() ADC()}break;
+        OP( 0x61,     "adc ind,X",        6,        X_IND){                                                        READ() ADC()}break;
+        OP( 0x71,     "adc ind,Y",        5,        IND_Y){                                                        READ() ADC()}break;
         //AND
-        OP( 0x29,         "and #",        2,    IMMEDIATE){                                                         LOGIC_OP(&)}
-        OP( 0x25,       "and zpg",        3,          ZPG){                                                  READ() LOGIC_OP(&)}
-        OP( 0x35,     "and zpg,x",        4,        ZPG_X){                                                  READ() LOGIC_OP(&)}
-        OP( 0x2d,       "and abs",        4,          ABS){                                                  READ() LOGIC_OP(&)}
-        OP( 0x3d,     "and abs,x",        4,        ABS_X){                                                  READ() LOGIC_OP(&)}
-        OP( 0x39,     "and abs,y",        4,        ABS_Y){                                                  READ() LOGIC_OP(&)}
-        OP( 0x21,     "and ind,x",        6,        X_IND){                                                  READ() LOGIC_OP(&)}
-        OP( 0x31,     "and ind,y",        5,        IND_Y){                                                  READ() LOGIC_OP(&)}
+        OP( 0x29,         "and #",        2,    IMMEDIATE){                                                         LOGIC_OP(&)}break;
+        OP( 0x25,       "and zpg",        3,          ZPG){                                                  READ() LOGIC_OP(&)}break;
+        OP( 0x35,     "and zpg,x",        4,        ZPG_X){                                                  READ() LOGIC_OP(&)}break;
+        OP( 0x2d,       "and abs",        4,          ABS){                                                  READ() LOGIC_OP(&)}break;
+        OP( 0x3d,     "and abs,x",        4,        ABS_X){                                                  READ() LOGIC_OP(&)}break;
+        OP( 0x39,     "and abs,y",        4,        ABS_Y){                                                  READ() LOGIC_OP(&)}break;
+        OP( 0x21,     "and ind,x",        6,        X_IND){                                                  READ() LOGIC_OP(&)}break;
+        OP( 0x31,     "and ind,y",        5,        IND_Y){                                                  READ() LOGIC_OP(&)}break;
         //ASL
-        OP( 0x0a,         "ASL A",        2,  ACCUMULATOR){                                      SHIFT_L() SET_REG(REG_A, temp)}
-        OP( 0x06,       "ASL zpg",        5,          ZPG){           READ() SHIFT_L() STORE(addr, temp) UPDATE_NZFLAGS( temp )}
-        OP( 0x16,     "ASL zpg,x",        6,        ZPG_X){           READ() SHIFT_L() STORE(addr, temp) UPDATE_NZFLAGS( temp )}
-        OP( 0x0e,       "ASL abs",        6,          ABS){           READ() SHIFT_L() STORE(addr, temp) UPDATE_NZFLAGS( temp )}
-        OP( 0x1e,     "ASL abs,x",        7,        ABS_X){           READ() SHIFT_L() STORE(addr, temp) UPDATE_NZFLAGS( temp )}
+        OP( 0x0a,         "ASL A",        2,  ACCUMULATOR){                                      SHIFT_L() SET_REG(REG_A, temp)}break;
+        OP( 0x06,       "ASL zpg",        5,          ZPG){           READ() SHIFT_L() STORE(addr, temp) UPDATE_NZFLAGS( temp )}break;
+        OP( 0x16,     "ASL zpg,x",        6,        ZPG_X){           READ() SHIFT_L() STORE(addr, temp) UPDATE_NZFLAGS( temp )}break;
+        OP( 0x0e,       "ASL abs",        6,          ABS){           READ() SHIFT_L() STORE(addr, temp) UPDATE_NZFLAGS( temp )}break;
+        OP( 0x1e,     "ASL abs,x",        7,        ABS_X){           READ() SHIFT_L() STORE(addr, temp) UPDATE_NZFLAGS( temp )}break;
         //CONDITIONAL JUMPS
-        OP( 0xb0,       "BCS rel",        2,          REL){                           COND_BRANCH( pgmbin::getBitAt<C_flag>(P))}
-        OP( 0x90,       "BCC rel",        2,          REL){                           COND_BRANCH(!pgmbin::getBitAt<C_flag>(P))}
-        OP( 0xf0,       "BEQ rel",        2,          REL){                           COND_BRANCH( pgmbin::getBitAt<Z_flag>(P))}
-        OP( 0xd0,       "BNE rel",        2,          REL){                           COND_BRANCH(!pgmbin::getBitAt<Z_flag>(P))}
-        OP( 0x30,       "BMI rel",        2,          REL){                           COND_BRANCH( pgmbin::getBitAt<N_flag>(P))}
-        OP( 0x10,       "BPL rel",        2,          REL){                           COND_BRANCH(!pgmbin::getBitAt<N_flag>(P))}
-        OP( 0x70,       "BVC rel",        2,          REL){                           COND_BRANCH( pgmbin::getBitAt<V_flag>(P))}
-        OP( 0x50,       "BVC rel",        2,          REL){                           COND_BRANCH(!pgmbin::getBitAt<V_flag>(P))}
+        OP( 0xb0,       "BCS rel",        2,          REL){                           COND_BRANCH( pgmbin::getBitAt<C_flag>(P))}break;
+        OP( 0x90,       "BCC rel",        2,          REL){                           COND_BRANCH(!pgmbin::getBitAt<C_flag>(P))}break;
+        OP( 0xf0,       "BEQ rel",        2,          REL){                           COND_BRANCH( pgmbin::getBitAt<Z_flag>(P))}break;
+        OP( 0xd0,       "BNE rel",        2,          REL){                           COND_BRANCH(!pgmbin::getBitAt<Z_flag>(P))}break;
+        OP( 0x30,       "BMI rel",        2,          REL){                           COND_BRANCH( pgmbin::getBitAt<N_flag>(P))}break;
+        OP( 0x10,       "BPL rel",        2,          REL){                           COND_BRANCH(!pgmbin::getBitAt<N_flag>(P))}break;
+        OP( 0x70,       "BVC rel",        2,          REL){                           COND_BRANCH( pgmbin::getBitAt<V_flag>(P))}break;
+        OP( 0x50,       "BVC rel",        2,          REL){                           COND_BRANCH(!pgmbin::getBitAt<V_flag>(P))}break;
         //BITs
-        OP( 0x24,       "bit zpg",        3,          ZPG){                                                       READ() BITS()}
-        OP( 0x2c,       "bit abs",        4,          ABS){                                                       READ() BITS()}
+        OP( 0x24,       "bit zpg",        3,          ZPG){                                                       READ() BITS()}break;
+        OP( 0x2c,       "bit abs",        4,          ABS){                                                       READ() BITS()}break;
         //FLAG CLEARS
-        OP( 0x18,           "CLC",        2,         IMPL){                                 P = pgmbin::setBitAt<C_flag>(0, P);}
-        OP( 0xd8,           "CLD",        2,         IMPL){                                 P = pgmbin::setBitAt<D_flag>(0, P);}
-        OP( 0x58,           "CLI",        2,         IMPL){                                 P = pgmbin::setBitAt<I_flag>(0, P);}
-        OP( 0xb8,           "CLV",        2,         IMPL){                                 P = pgmbin::setBitAt<V_flag>(0, P);}
+        OP( 0x18,           "CLC",        2,         IMPL){                                 P = pgmbin::setBitAt<C_flag>(0, P);}break;
+        OP( 0xd8,           "CLD",        2,         IMPL){                                 P = pgmbin::setBitAt<D_flag>(0, P);}break;
+        OP( 0x58,           "CLI",        2,         IMPL){                                 P = pgmbin::setBitAt<I_flag>(0, P);}break;
+        OP( 0xb8,           "CLV",        2,         IMPL){                                 P = pgmbin::setBitAt<V_flag>(0, P);}break;
         //CMPs
-        OP( 0xc9,         "cmp #",        2,     IMMEDIATE){                                                         CMP(REG_A)}
-        OP( 0xc5,       "cmp zpg",        3,          ZPG){                                                   READ() CMP(REG_A)}
-        OP( 0xd5,     "cmp zpg,x",        4,        ZPG_X){                                                   READ() CMP(REG_A)}
-        OP( 0xcd,       "cmp abs",        4,          ABS){                                                   READ() CMP(REG_A)}
-        OP( 0xdd,     "cmp abs,x",        4,        ABS_X){                                                   READ() CMP(REG_A)}
-        OP( 0xd9,     "cmp abs,y",        4,        ABS_Y){                                                   READ() CMP(REG_A)}
-        OP( 0xc1,     "cmp ind,x",        6,        X_IND){                                                   READ() CMP(REG_A)}
-        OP( 0xd1,     "cmp ind,y",        5,        IND_Y){                                                   READ() CMP(REG_A)}
+        OP( 0xc9,         "cmp #",        2,     IMMEDIATE){                                                         CMP(REG_A)}break;
+        OP( 0xc5,       "cmp zpg",        3,          ZPG){                                                   READ() CMP(REG_A)}break;
+        OP( 0xd5,     "cmp zpg,x",        4,        ZPG_X){                                                   READ() CMP(REG_A)}break;
+        OP( 0xcd,       "cmp abs",        4,          ABS){                                                   READ() CMP(REG_A)}break;
+        OP( 0xdd,     "cmp abs,x",        4,        ABS_X){                                                   READ() CMP(REG_A)}break;
+        OP( 0xd9,     "cmp abs,y",        4,        ABS_Y){                                                   READ() CMP(REG_A)}break;
+        OP( 0xc1,     "cmp ind,x",        6,        X_IND){                                                   READ() CMP(REG_A)}break;
+        OP( 0xd1,     "cmp ind,y",        5,        IND_Y){                                                   READ() CMP(REG_A)}break;
         //CPXs
-        OP( 0xe0,         "cpx #",        2,     IMMEDIATE){                                                         CMP(REG_X)}
-        OP( 0xe4,       "cpx zpg",        3,          ZPG){                                                   READ() CMP(REG_X)}
-        OP( 0xec,       "cpx abs",        4,          ABS){                                                   READ() CMP(REG_X)}
+        OP( 0xe0,         "cpx #",        2,     IMMEDIATE){                                                         CMP(REG_X)}break;
+        OP( 0xe4,       "cpx zpg",        3,          ZPG){                                                   READ() CMP(REG_X)}break;
+        OP( 0xec,       "cpx abs",        4,          ABS){                                                   READ() CMP(REG_X)}break;
         //CPYs
-        OP( 0xc0,         "cpy #",        2,     IMMEDIATE){                                                         CMP(REG_Y)}
-        OP( 0xc4,       "cpy zpg",        3,          ZPG){                                                   READ() CMP(REG_Y)}
-        OP( 0xcc,       "cpy abs",        4,          ABS){                                                   READ() CMP(REG_Y)}
+        OP( 0xc0,         "cpy #",        2,     IMMEDIATE){                                                         CMP(REG_Y)}break;
+        OP( 0xc4,       "cpy zpg",        3,          ZPG){                                                   READ() CMP(REG_Y)}break;
+        OP( 0xcc,       "cpy abs",        4,          ABS){                                                   READ() CMP(REG_Y)}break;
         //DECs
-        OP( 0xc6,       "DEC zpg",        5,          ZPG){        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}
-        OP( 0xd6,     "DEC zpg,x",        6,        ZPG_X){        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}
-        OP( 0xce,       "DEC abs",        3,          ABS){        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}
-        OP( 0xde,     "DEC abs,x",        7,        ABS_X){        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}
+        OP( 0xc6,       "DEC zpg",        5,          ZPG){        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}break;
+        OP( 0xd6,     "DEC zpg,x",        6,        ZPG_X){        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}break;
+        OP( 0xce,       "DEC abs",        3,          ABS){        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}break;
+        OP( 0xde,     "DEC abs,x",        7,        ABS_X){        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}break;
         //DEX
-        OP( 0xca,      "DEX impl",        2,         IMPL){                              DEC(regs[REG_X]) SET_REG(REG_X, tmp8b)}
+        OP( 0xca,      "DEX impl",        2,         IMPL){                              DEC(regs[REG_X]) SET_REG(REG_X, tmp8b)}break;
         //DEY
-        OP( 0x88,      "DEY impl",        2,         IMPL){                              DEC(regs[REG_Y]) SET_REG(REG_Y, tmp8b)}
+        OP( 0x88,      "DEY impl",        2,         IMPL){                              DEC(regs[REG_Y]) SET_REG(REG_Y, tmp8b)}break;
         //EOR
-        OP( 0x49,         "eor #",        2,    IMMEDIATE){                                                         LOGIC_OP(^)}
-        OP( 0x45,       "eor zpg",        3,          ZPG){                                                  READ() LOGIC_OP(^)}
-        OP( 0x55,     "eor zpg,x",        4,        ZPG_X){                                                  READ() LOGIC_OP(^)}
-        OP( 0x4d,       "eor abs",        4,          ABS){                                                  READ() LOGIC_OP(^)}
-        OP( 0x5d,     "eor abs,x",        4,        ABS_X){                                                  READ() LOGIC_OP(^)}
-        OP( 0x59,     "eor abs,y",        4,        ABS_Y){                                                  READ() LOGIC_OP(^)}
-        OP( 0x41,     "eor ind,x",        6,        X_IND){                                                  READ() LOGIC_OP(^)}
-        OP( 0x51,     "eor ind,y",        5,        IND_Y){                                                  READ() LOGIC_OP(^)}
+        OP( 0x49,         "eor #",        2,    IMMEDIATE){                                                         LOGIC_OP(^)}break;
+        OP( 0x45,       "eor zpg",        3,          ZPG){                                                  READ() LOGIC_OP(^)}break;
+        OP( 0x55,     "eor zpg,x",        4,        ZPG_X){                                                  READ() LOGIC_OP(^)}break;
+        OP( 0x4d,       "eor abs",        4,          ABS){                                                  READ() LOGIC_OP(^)}break;
+        OP( 0x5d,     "eor abs,x",        4,        ABS_X){                                                  READ() LOGIC_OP(^)}break;
+        OP( 0x59,     "eor abs,y",        4,        ABS_Y){                                                  READ() LOGIC_OP(^)}break;
+        OP( 0x41,     "eor ind,x",        6,        X_IND){                                                  READ() LOGIC_OP(^)}break;
+        OP( 0x51,     "eor ind,y",        5,        IND_Y){                                                  READ() LOGIC_OP(^)}break;
         //INCs
-        OP( 0xe6,       "INC zpg",        5,          ZPG){        READ() INC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}
-        OP( 0xf6,     "INC zpg,x",        6,        ZPG_X){        READ() INC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}
-        OP( 0xee,       "INC abs",        6,          ABS){        READ() INC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}
-        OP( 0xfe,     "INC abs,x",        7,        ABS_X){        READ() INC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}
+        OP( 0xe6,       "INC zpg",        5,          ZPG){        READ() INC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}break;
+        OP( 0xf6,     "INC zpg,x",        6,        ZPG_X){        READ() INC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}break;
+        OP( 0xee,       "INC abs",        6,          ABS){        READ() INC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}break;
+        OP( 0xfe,     "INC abs,x",        7,        ABS_X){        READ() INC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b)}break;
         //INX
-        OP( 0xe8,      "INX impl",        2,         IMPL){                              INC(regs[REG_X]) SET_REG(REG_X, tmp8b)}
+        OP( 0xe8,      "INX impl",        2,         IMPL){                              INC(regs[REG_X]) SET_REG(REG_X, tmp8b)}break;
         //INY
-        OP( 0xc8,      "INY impl",        2,         IMPL){                              INC(regs[REG_Y]) SET_REG(REG_Y, tmp8b)}
+        OP( 0xc8,      "INY impl",        2,         IMPL){                              INC(regs[REG_Y]) SET_REG(REG_Y, tmp8b)}break;
         //JMPs
-        OP( 0x4c,       "jmp abs",        3,          ABS){                                                            SET_PC()}
-        OP( 0x6c,       "jmp ind",        5,          IND){                                                            SET_PC()}
+        OP( 0x4c,       "jmp abs",        3,          ABS){                                                            SET_PC()}break;
+        OP( 0x6c,       "jmp ind",        5,          IND){                                                            SET_PC()}break;
         //JSR
-        OP( 0x20,       "JSR abs",        6,          ABS){                                        STACK_PUSH16((PC+2)) SET_PC()}
+        OP( 0x20,       "JSR abs",        6,          ABS){                                        STACK_PUSH16((PC+2)) SET_PC()}break;
         //LDAs
-        OP( 0xa9,         "LDA #",        2,     IMMEDIATE){                                           SET_REG( REG_A, operand )}
-        OP( 0xa5,       "LDA zpg",        3,          ZPG){                                     READ() SET_REG( REG_A, operand )}
-        OP( 0xb5,     "LDA zpg,x",        4,        ZPG_X){                                     READ() SET_REG( REG_A, operand )}
-        OP( 0xad,       "LDA abs",        4,          ABS){                                     READ() SET_REG( REG_A, operand )}
-        OP( 0xbd,     "LDA abs,x",        4,        ABS_X){                                     READ() SET_REG( REG_A, operand )}
-        OP( 0xb9,     "LDA abs,y",        4,        ABS_Y){                                     READ() SET_REG( REG_A, operand )}
-        OP( 0xa1,     "LDA ind,x",        6,        X_IND){                                     READ() SET_REG( REG_A, operand )}
-        OP( 0xb1,     "LDA ind,y",        5,        IND_Y){                                     READ() SET_REG( REG_A, operand )}
+        OP( 0xa9,         "LDA #",        2,     IMMEDIATE){                                           SET_REG( REG_A, operand )}break;
+        OP( 0xa5,       "LDA zpg",        3,          ZPG){                                     READ() SET_REG( REG_A, operand )}break;
+        OP( 0xb5,     "LDA zpg,x",        4,        ZPG_X){                                     READ() SET_REG( REG_A, operand )}break;
+        OP( 0xad,       "LDA abs",        4,          ABS){                                     READ() SET_REG( REG_A, operand )}break;
+        OP( 0xbd,     "LDA abs,x",        4,        ABS_X){                                     READ() SET_REG( REG_A, operand )}break;
+        OP( 0xb9,     "LDA abs,y",        4,        ABS_Y){                                     READ() SET_REG( REG_A, operand )}break;
+        OP( 0xa1,     "LDA ind,x",        6,        X_IND){                                     READ() SET_REG( REG_A, operand )}break;
+        OP( 0xb1,     "LDA ind,y",        5,        IND_Y){                                     READ() SET_REG( REG_A, operand )}break;
         //LDXs
-        OP( 0xa2,         "LDX #",        2,     IMMEDIATE){                                           SET_REG( REG_X, operand )}
-        OP( 0xa6,       "LDX zpg",        3,          ZPG){                                     READ() SET_REG( REG_X, operand )}
-        OP( 0xb6,     "LDX zpg,y",        4,        ZPG_Y){                                     READ() SET_REG( REG_X, operand )}
-        OP( 0xae,       "LDX abs",        4,          ABS){                                     READ() SET_REG( REG_X, operand )}
-        OP( 0xbe,     "LDX abs,y",        4,        ABS_Y){                                     READ() SET_REG( REG_X, operand )}
+        OP( 0xa2,         "LDX #",        2,     IMMEDIATE){                                           SET_REG( REG_X, operand )}break;
+        OP( 0xa6,       "LDX zpg",        3,          ZPG){                                     READ() SET_REG( REG_X, operand )}break;
+        OP( 0xb6,     "LDX zpg,y",        4,        ZPG_Y){                                     READ() SET_REG( REG_X, operand )}break;
+        OP( 0xae,       "LDX abs",        4,          ABS){                                     READ() SET_REG( REG_X, operand )}break;
+        OP( 0xbe,     "LDX abs,y",        4,        ABS_Y){                                     READ() SET_REG( REG_X, operand )}break;
         //LDYs
-        OP( 0xa0,         "LDY #",        2,     IMMEDIATE){                                           SET_REG( REG_Y, operand )}
-        OP( 0xa4,       "LDY zpg",        3,          ZPG){                                     READ() SET_REG( REG_Y, operand )}
-        OP( 0xb4,     "LDY zpg,x",        4,        ZPG_X){                                     READ() SET_REG( REG_Y, operand )}
-        OP( 0xac,       "LDY abs",        4,          ABS){                                     READ() SET_REG( REG_Y, operand )}
-        OP( 0xbc,     "LDY abs,x",        4,        ABS_X){                                     READ() SET_REG( REG_Y, operand )}
+        OP( 0xa0,         "LDY #",        2,     IMMEDIATE){                                           SET_REG( REG_Y, operand )}break;
+        OP( 0xa4,       "LDY zpg",        3,          ZPG){                                     READ() SET_REG( REG_Y, operand )}break;
+        OP( 0xb4,     "LDY zpg,x",        4,        ZPG_X){                                     READ() SET_REG( REG_Y, operand )}break;
+        OP( 0xac,       "LDY abs",        4,          ABS){                                     READ() SET_REG( REG_Y, operand )}break;
+        OP( 0xbc,     "LDY abs,x",        4,        ABS_X){                                     READ() SET_REG( REG_Y, operand )}break;
         //LSR
-        OP( 0x4a,         "LSR A",        2,  ACCUMULATOR){                                       SHIFT_R() SET_REG(REG_A, temp)}
-        OP( 0x46,       "LSR zpg",        5,          ZPG){            READ() SHIFT_R() STORE(addr, temp) UPDATE_NZFLAGS( temp )}
-        OP( 0x56,     "LSR zpg,x",        6,        ZPG_X){            READ() SHIFT_R() STORE(addr, temp) UPDATE_NZFLAGS( temp )}
-        OP( 0x4e,       "LSR abs",        6,          ABS){            READ() SHIFT_R() STORE(addr, temp) UPDATE_NZFLAGS( temp )}
-        OP( 0x5e,     "LSR abs,x",        7,        ABS_X){            READ() SHIFT_R() STORE(addr, temp) UPDATE_NZFLAGS( temp )}
+        OP( 0x4a,         "LSR A",        2,  ACCUMULATOR){                                       SHIFT_R() SET_REG(REG_A, temp)}break;
+        OP( 0x46,       "LSR zpg",        5,          ZPG){            READ() SHIFT_R() STORE(addr, temp) UPDATE_NZFLAGS( temp )}break;
+        OP( 0x56,     "LSR zpg,x",        6,        ZPG_X){            READ() SHIFT_R() STORE(addr, temp) UPDATE_NZFLAGS( temp )}break;
+        OP( 0x4e,       "LSR abs",        6,          ABS){            READ() SHIFT_R() STORE(addr, temp) UPDATE_NZFLAGS( temp )}break;
+        OP( 0x5e,     "LSR abs,x",        7,        ABS_X){            READ() SHIFT_R() STORE(addr, temp) UPDATE_NZFLAGS( temp )}break;
         //ORA
-        OP( 0x09,         "ORA #",        2,    IMMEDIATE){                                                         LOGIC_OP(|)}
-        OP( 0x05,       "ORA zpg",        3,          ZPG){                                                  READ() LOGIC_OP(|)}
-        OP( 0x15,     "ORA zpg,x",        4,        ZPG_X){                                                  READ() LOGIC_OP(|)}
-        OP( 0x0d,       "ORA abs",        4,          ABS){                                                  READ() LOGIC_OP(|)}
-        OP( 0x1d,     "ORA abs,x",        4,        ABS_X){                                                  READ() LOGIC_OP(|)}
-        OP( 0x19,     "ORA abs,y",        4,        ABS_Y){                                                  READ() LOGIC_OP(|)}
-        OP( 0x01,     "ORA ind,x",        6,        X_IND){                                                  READ() LOGIC_OP(|)}
-        OP( 0x11,     "ORA ind,y",        5,        IND_Y){                                                  READ() LOGIC_OP(|)}
+        OP( 0x09,         "ORA #",        2,    IMMEDIATE){                                                         LOGIC_OP(|)}break;
+        OP( 0x05,       "ORA zpg",        3,          ZPG){                                                  READ() LOGIC_OP(|)}break;
+        OP( 0x15,     "ORA zpg,x",        4,        ZPG_X){                                                  READ() LOGIC_OP(|)}break;
+        OP( 0x0d,       "ORA abs",        4,          ABS){                                                  READ() LOGIC_OP(|)}break;
+        OP( 0x1d,     "ORA abs,x",        4,        ABS_X){                                                  READ() LOGIC_OP(|)}break;
+        OP( 0x19,     "ORA abs,y",        4,        ABS_Y){                                                  READ() LOGIC_OP(|)}break;
+        OP( 0x01,     "ORA ind,x",        6,        X_IND){                                                  READ() LOGIC_OP(|)}break;
+        OP( 0x11,     "ORA ind,y",        5,        IND_Y){                                                  READ() LOGIC_OP(|)}break;
         //PHA       
-        OP( 0x48,           "PHA",        3,         IMPL){                                             STACK_PUSH(regs[REG_A])}
+        OP( 0x48,           "PHA",        3,         IMPL){                                             STACK_PUSH(regs[REG_A])}break;
         //PHP       
-        OP( 0x08,           "PHP",        3,         IMPL){                                                       STACK_PUSH(P)}
+        OP( 0x08,           "PHP",        3,         IMPL){                                                       STACK_PUSH(P)}break;
         //PLA       
-        OP( 0x68,           "PLA",        4,         IMPL){                             STACK_PULL(tmp8b) SET_REG(REG_A, tmp8b)}
+        OP( 0x68,           "PLA",        4,         IMPL){                             STACK_PULL(tmp8b) SET_REG(REG_A, tmp8b)}break;
         //PLP       
-        OP( 0x28,           "PLP",        4,         IMPL){                                                       STACK_PULL(P)}
+        OP( 0x28,           "PLP",        4,         IMPL){                                                       STACK_PULL(P)}break;
         //ROL
-        OP( 0x2a,         "ROL A",        2,  ACCUMULATOR){                                         ROL() SET_REG(REG_A, tmp8b)}
-        OP( 0x26,       "ROL zpg",        5,          ZPG){             READ() ROL() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}
-        OP( 0x36,     "ROL zpg,x",        6,        ZPG_X){             READ() ROL() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}
-        OP( 0x2e,       "ROL abs",        6,          ABS){             READ() ROL() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}
-        OP( 0x3e,     "ROL abs,x",        7,        ABS_X){             READ() ROL() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}
+        OP( 0x2a,         "ROL A",        2,  ACCUMULATOR){                                         ROL() SET_REG(REG_A, tmp8b)}break;
+        OP( 0x26,       "ROL zpg",        5,          ZPG){             READ() ROL() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}break;
+        OP( 0x36,     "ROL zpg,x",        6,        ZPG_X){             READ() ROL() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}break;
+        OP( 0x2e,       "ROL abs",        6,          ABS){             READ() ROL() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}break;
+        OP( 0x3e,     "ROL abs,x",        7,        ABS_X){             READ() ROL() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}break;
         //ROR
-        OP( 0x6a,         "ROR A",        2,  ACCUMULATOR){                                         ROR() SET_REG(REG_A, tmp8b)}
-        OP( 0x66,       "ROR zpg",        5,          ZPG){             READ() ROR() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}
-        OP( 0x76,     "ROR zpg,x",        6,        ZPG_X){             READ() ROR() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}
-        OP( 0x6e,       "ROR abs",        6,          ABS){             READ() ROR() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}
-        OP( 0x7e,     "ROR abs,x",        7,        ABS_X){             READ() ROR() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}
+        OP( 0x6a,         "ROR A",        2,  ACCUMULATOR){                                         ROR() SET_REG(REG_A, tmp8b)}break;
+        OP( 0x66,       "ROR zpg",        5,          ZPG){             READ() ROR() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}break;
+        OP( 0x76,     "ROR zpg,x",        6,        ZPG_X){             READ() ROR() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}break;
+        OP( 0x6e,       "ROR abs",        6,          ABS){             READ() ROR() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}break;
+        OP( 0x7e,     "ROR abs,x",        7,        ABS_X){             READ() ROR() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b )}break;
         //RETURNS
-        OP( 0x40,           "RTI",        6,         IMPL){                                                               RTI()}
-        OP( 0x60,           "RTS",        6,         IMPL){                                                        RESTORE_PC()}
+        OP( 0x40,           "RTI",        6,         IMPL){                                                               RTI()}break;
+        OP( 0x60,           "RTS",        6,         IMPL){                                                        RESTORE_PC()}break;
         //BRK
-        OP( 0x00,           "brk",        1,         IMPL){                                                               BRK()}
+        OP( 0x00,           "brk",        1,         IMPL){                                                               BRK()}break;
         //SBCs
-        OP( 0xe9,         "SBC #",        2,    IMMEDIATE){                                                               SBC()}
-        OP( 0xe5,       "SBC zpg",        3,          ZPG){                                                        READ() SBC()}
-        OP( 0xf5,     "SBC zpg,X",        4,        ZPG_X){                                                        READ() SBC()}
-        OP( 0xed,       "SBC abs",        4,          ABS){                                                        READ() SBC()}
-        OP( 0xfd,     "SBC abs,X",        4,        ABS_X){                                                        READ() SBC()}
-        OP( 0xf9,     "SBC abs,Y",        4,        ABS_Y){                                                        READ() SBC()}
-        OP( 0xe1,     "SBC ind,X",        6,        X_IND){                                                        READ() SBC()}
-        OP( 0xf1,     "SBC ind,Y",        5,        IND_Y){                                                        READ() SBC()}
+        OP( 0xe9,         "SBC #",        2,    IMMEDIATE){                                                               SBC()}break;
+        OP( 0xe5,       "SBC zpg",        3,          ZPG){                                                        READ() SBC()}break;
+        OP( 0xf5,     "SBC zpg,X",        4,        ZPG_X){                                                        READ() SBC()}break;
+        OP( 0xed,       "SBC abs",        4,          ABS){                                                        READ() SBC()}break;
+        OP( 0xfd,     "SBC abs,X",        4,        ABS_X){                                                        READ() SBC()}break;
+        OP( 0xf9,     "SBC abs,Y",        4,        ABS_Y){                                                        READ() SBC()}break;
+        OP( 0xe1,     "SBC ind,X",        6,        X_IND){                                                        READ() SBC()}break;
+        OP( 0xf1,     "SBC ind,Y",        5,        IND_Y){                                                        READ() SBC()}break;
         //FLAG SETS
-        OP( 0x38,           "SEC",        2,         IMPL){                                 P = pgmbin::setBitAt<C_flag>(1, P);}
-        OP( 0xf8,           "SED",        2,         IMPL){                                 P = pgmbin::setBitAt<D_flag>(1, P);}
-        OP( 0x78,           "SEI",        2,         IMPL){                                 P = pgmbin::setBitAt<I_flag>(1, P);}
+        OP( 0x38,           "SEC",        2,         IMPL){                                 P = pgmbin::setBitAt<C_flag>(1, P);}break;
+        OP( 0xf8,           "SED",        2,         IMPL){                                 P = pgmbin::setBitAt<D_flag>(1, P);}break;
+        OP( 0x78,           "SEI",        2,         IMPL){                                 P = pgmbin::setBitAt<I_flag>(1, P);}break;
         //STAs
-        OP( 0x85,       "STA zpg",        3,          ZPG){                                         STORE( operand, regs[REG_A])}
-        OP( 0x95,     "STA zpg,x",        4,        ZPG_X){                                         STORE( operand, regs[REG_A])}
-        OP( 0x8d,       "STA abs",        4,          ABS){                                         STORE( operand, regs[REG_A])}
-        OP( 0x9d,     "STA abs,x",        5,        ABS_X){                                         STORE( operand, regs[REG_A])}
-        OP( 0x99,     "STA abs,y",        5,        ABS_Y){                                         STORE( operand, regs[REG_A])}
-        OP( 0x81,     "STA ind,x",        6,        X_IND){                                         STORE( operand, regs[REG_A])}
-        OP( 0x91,     "STA ind,y",        6,        IND_Y){                                         STORE( operand, regs[REG_A])}
+        OP( 0x85,       "STA zpg",        3,          ZPG){                                         STORE( operand, regs[REG_A])}break;
+        OP( 0x95,     "STA zpg,x",        4,        ZPG_X){                                         STORE( operand, regs[REG_A])}break;
+        OP( 0x8d,       "STA abs",        4,          ABS){                                         STORE( operand, regs[REG_A])}break;
+        OP( 0x9d,     "STA abs,x",        5,        ABS_X){                                         STORE( operand, regs[REG_A])}break;
+        OP( 0x99,     "STA abs,y",        5,        ABS_Y){                                         STORE( operand, regs[REG_A])}break;
+        OP( 0x81,     "STA ind,x",        6,        X_IND){                                         STORE( operand, regs[REG_A])}break;
+        OP( 0x91,     "STA ind,y",        6,        IND_Y){                                         STORE( operand, regs[REG_A])}break;
         //STXs
-        OP( 0x86,       "STX zpg",        3,          ZPG){                                         STORE( operand, regs[REG_X])}
-        OP( 0x96,     "STX zpg,x",        4,        ZPG_Y){                                         STORE( operand, regs[REG_X])}
-        OP( 0x8e,     "STX zpg,x",        4,          ABS){                                         STORE( operand, regs[REG_X])}
+        OP( 0x86,       "STX zpg",        3,          ZPG){                                         STORE( operand, regs[REG_X])}break;
+        OP( 0x96,     "STX zpg,x",        4,        ZPG_Y){                                         STORE( operand, regs[REG_X])}break;
+        OP( 0x8e,     "STX zpg,x",        4,          ABS){                                         STORE( operand, regs[REG_X])}break;
         //STYs
-        OP( 0x84,       "STY zpg",        3,          ZPG){                                         STORE( operand, regs[REG_Y])}
-        OP( 0x94,     "STY zpg,x",        4,        ZPG_X){                                         STORE( operand, regs[REG_Y])}
-        OP( 0x8c,     "STY zpg,x",        4,          ABS){                                         STORE( operand, regs[REG_Y])}
+        OP( 0x84,       "STY zpg",        3,          ZPG){                                         STORE( operand, regs[REG_Y])}break;
+        OP( 0x94,     "STY zpg,x",        4,        ZPG_X){                                         STORE( operand, regs[REG_Y])}break;
+        OP( 0x8c,     "STY zpg,x",        4,          ABS){                                         STORE( operand, regs[REG_Y])}break;
         //TAX
-        OP( 0xaa,           "TAX",        2,         IMPL){                 regs[REG_X]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_X])}
+        OP( 0xaa,           "TAX",        2,         IMPL){                 regs[REG_X]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_X])}break;
         //TAY
-        OP( 0xa8,           "TAY",        2,         IMPL){                 regs[REG_Y]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_Y])}
+        OP( 0xa8,           "TAY",        2,         IMPL){                 regs[REG_Y]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_Y])}break;
         //TSX
-        OP( 0xba,           "TSX",        2,         IMPL){                          regs[REG_X]=SP; UPDATE_NZFLAGS(regs[REG_X])}
+        OP( 0xba,           "TSX",        2,         IMPL){                          regs[REG_X]=SP; UPDATE_NZFLAGS(regs[REG_X])}break;
         //TXA
-        OP( 0x8a,           "TXA",        2,         IMPL){                 regs[REG_A]=regs[REG_X]; UPDATE_NZFLAGS(regs[REG_A])}
+        OP( 0x8a,           "TXA",        2,         IMPL){                 regs[REG_A]=regs[REG_X]; UPDATE_NZFLAGS(regs[REG_A])}break;
         //TXS
-        OP( 0x9a,           "TXS",        2,         IMPL){                                                     SP = regs[REG_X];}
+        OP( 0x9a,           "TXS",        2,         IMPL){                                                     SP = regs[REG_X];}break;
         //TYA
-        OP( 0x98,           "TYA",        2,         IMPL){                  regs[REG_A]=regs[REG_Y]; UPDATE_NZFLAGS(regs[REG_A])}
+        OP( 0x98,           "TYA",        2,         IMPL){                  regs[REG_A]=regs[REG_Y]; UPDATE_NZFLAGS(regs[REG_A])}break;
         case 0xEA:  
             return I;
         default:            

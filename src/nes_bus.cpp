@@ -1,5 +1,7 @@
 #include "nes_bus.h"
+#include "nes_ppu.h"
 #include <assert.h>
+
 #define internal static
 
 internal byte*
@@ -14,10 +16,15 @@ MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
     } 
     else if( addr >= 0x2000 && addr <= 0x3FFF ) 
     { 
-        // PPU SPACE    
-
-        //TODO(pgm) for now return 0        
-        return 0;        
+        // PPU SPACE 
+        if( set )
+        {
+            return WritePPU(nes, addr, v);
+        }
+        else
+        {            
+            return ReadPPU(nes, addr);
+        }
     } 
     else if( addr >= 0x4000 && addr <= 0x4018 ) 
     { 

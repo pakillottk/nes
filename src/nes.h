@@ -7,9 +7,16 @@
 static const u32 ROM_PAGESIZE = 16384;
 static const u32 VROM_PAGESIZE = 8192;
 
+enum MIRRORING
+{
+    kVertical,
+    kHorizontal
+};
+
 struct NESCartridge
 {
     bool8 loaded;
+    MIRRORING mirror;
     u32 mapper;
     u32 pages;
     byte *ROM;
@@ -156,6 +163,7 @@ enum RUN_MODE
 struct NESContext
 {
     u32 frameBufferTextId;
+    u32 patternTableTexId;
     u32 backbuffer[ NES_FRAMEBUFFER_WIDTH *  NES_FRAMEBUFFER_HEIGHT ];
     NES nes;
     RUN_MODE runMode;
