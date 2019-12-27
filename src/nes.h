@@ -167,7 +167,7 @@ struct NESContext
     bool8 instructionQueueOverflow;
 };
 
-#define NES_INIT(name) void name(NESContext *context)
+#define NES_INIT(name) void name(NESContext *context, const char *romPath)
 typedef NES_INIT(nes_init);
 
 #define NES_UPDATE(name) void name(NESContext *context)

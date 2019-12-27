@@ -22,6 +22,7 @@
 global_variable HGLRC gOglContext;
 global_variable NesCode gNesCode;
 global_variable NESContext gNesCtx;
+global_variable char gCurrentROM[MAX_PATH];
 
 #define ABS(V) (V) < 0 ? -V : V
 
@@ -261,7 +262,7 @@ Win32_RenderOGL(NESContext *nesContext)
 }
 
 internal bool8
-Win32_RenderImGui(NESContext *nesContext)
+Win32_RenderImGui(NesCode *nesCode, NESContext *nesContext)
 {
     bool8 quit = false;
 
@@ -276,8 +277,8 @@ Win32_RenderImGui(NESContext *nesContext)
             char path[MAX_PATH];
             if( OpenFileDialog(path) )
             {
-                // TODO(pgm) load the ROM
-                OutputDebugStringA(path);
+                nesCode->initialize(nesContext, path);
+                strcpy(gCurrentROM, path);
             }
         }            
         break;
@@ -354,7 +355,7 @@ WindowProc(HWND   Window,
             ImGui::NewFrame();    
 
             // render the NES State
-            if( Win32_RenderImGui( &gNesCtx ) )
+            if( Win32_RenderImGui( &gNesCode, &gNesCtx ) )
             {
                 PostQuitMessage(0);
             }
@@ -380,6 +381,7 @@ WinMain(HINSTANCE hInstance,
         int       nShowCmd)
 {
     gNesCtx = {};
+    gCurrentROM[0] = 0;
 
     WNDCLASS wc = {};    
     wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
@@ -414,15 +416,14 @@ WinMain(HINSTANCE hInstance,
             NULL
         );
 
-        gNesCode = LoadNesCode("NES.dll");
-        gNesCode.initialize(&gNesCtx);
+        gNesCode = LoadNesCode("NES.dll");        
 
         for(;;)
         {
             #if HOT_RELOAD
-                if( AttemptHotReload("NES.dll", &gNesCode) )
+                if( AttemptHotReload("NES.dll", &gNesCode) && gCurrentROM[0] != NULL )
                 {
-                    gNesCode.initialize(&gNesCtx);
+                    gNesCode.initialize(&gNesCtx, gCurrentROM);
                 }
             #endif
 

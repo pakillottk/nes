@@ -53,8 +53,7 @@ NES_INIT(NES_Init)
 {
     memset(context->nes.RAM, 0, sizeof(context->nes.RAM));
 
-    // TODO(pgm) This should be passed from outside
-    if( LoadROM("data/Donkey Kong (World) (Rev A).nes", &context->nes.cartridge) )
+    if( LoadROM(romPath, &context->nes.cartridge) )
     {
         InitializeCPU(&context->nes.cpu, &context->nes);    
     }
