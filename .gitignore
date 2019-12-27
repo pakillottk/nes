@@ -1,3 +1,4 @@
-build
+build/*
+!build/data
 vendor/imgui/backends
 vendor/imgui/misc

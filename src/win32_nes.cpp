@@ -4,6 +4,7 @@
 
 #include "nes_types.h"
 #include "nes.h"
+#include "win32_nes.h"
 
 // imgui source code
 #include "../vendor/imgui/imgui.cpp"
@@ -12,19 +13,11 @@
 #include "../vendor/imgui/imgui_demo.cpp"
 #include "../vendor/imgui/imgui_impl_win32.cpp"
 #include "../vendor/imgui/imgui_impl_opengl3.cpp"
+#include "imgui_menu.cpp"
 
 #define internal static
 #define local_persist static
 #define global_variable static
-
-struct NesCode
-{
-    bool8 isValid;
-    HMODULE dllHandle;
-    FILETIME lastWriteTime;
-    nes_init *initialize;
-    nes_update *update;    
-};
 
 global_variable HGLRC gOglContext;
 global_variable NesCode gNesCode;
@@ -114,6 +107,27 @@ AttemptHotReload(const char * targetFilename, NesCode *nesCode)
 }
 #endif
 
+internal bool8 
+OpenFileDialog(char *path)
+{
+    OPENFILENAME ofn;
+    ZeroMemory( path, MAX_PATH );    
+    ZeroMemory( &ofn, sizeof( OPENFILENAME ) );
+
+    ofn.lStructSize=sizeof(OPENFILENAME);
+    ofn.hwndOwner = NULL;
+    ofn.lpstrFilter = "NES ROM\0*.nes";
+    ofn.lpstrFile = path;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrFileTitle = "Load NES ROM";
+    ofn.lpstrDefExt = "nes";
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+
+    return GetOpenFileNameA( &ofn );
+}
+
 internal bool8
 Win32_MakeOpenGlContext(HWND Window)
 {
@@ -193,10 +207,37 @@ Win32_RenderOGL()
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-internal void
-Win32_RenderImGui()
+internal bool8
+Win32_RenderImGui(NESContext *nesContext)
 {
-    ImGui::ShowDemoWindow();
+    bool8 quit = false;
+
+    MENU_REQUEST request = RenderMainMenu(&gNesCode);
+    // TODO(pgm): Render the NES State
+    ImGui::Render();
+
+    switch (request)
+    {
+        case kLoadRom:
+        {            
+            char path[MAX_PATH];
+            if( OpenFileDialog(path) )
+            {
+                // TODO(pgm) load the ROM
+                OutputDebugStringA(path);
+            }
+        }            
+        break;
+
+        case kQuit:
+            quit = true;
+        break;
+
+        default:
+            break;
+    }
+
+    return(quit);
 }
 
 internal LRESULT CALLBACK 
@@ -214,7 +255,7 @@ WindowProc(HWND   Window,
             if( !Win32_MakeOpenGlContext(Window)    
                 || !Win32_InitializeImGui(Window))
             {
-                // exit the app if this fails...
+                // exit the app if this fails...                
                 PostQuitMessage(0);
             }
         }
@@ -260,9 +301,10 @@ WindowProc(HWND   Window,
             ImGui::NewFrame();    
 
             // render the NES State
-            Win32_RenderImGui();
-
-            ImGui::Render();    
+            if( Win32_RenderImGui( &gNesCtx ) )
+            {
+                PostQuitMessage(0);
+            }
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
             SwapBuffers(dc);
@@ -290,6 +332,16 @@ WinMain(HINSTANCE hInstance,
     wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
+    wc.hIcon = (HICON)LoadImageA( // returns a HANDLE so we have to cast to HICON
+                    NULL,             // hInstance must be NULL when loading from a file
+                    "data/nes.ico",   // the icon file name
+                    IMAGE_ICON,       // specifies that the file is an icon
+                    0,                // width of the image (we'll specify default later on)
+                    0,                // height of the image
+                    LR_LOADFROMFILE|  // we want to load a file (as opposed to a resource)
+                    LR_DEFAULTSIZE|   // default metrics based on the type (IMAGE_ICON, 32x32)
+                    LR_SHARED         // let the system release the handle when it's no longer used
+                );
     wc.lpszClassName = TEXT("NESWNDClass");
     
     if( RegisterClass(&wc) )
