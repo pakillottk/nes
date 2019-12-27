@@ -1,4 +1,5 @@
 build/*
 !build/data
+build/data/*.nes
 vendor/imgui/backends
 vendor/imgui/misc

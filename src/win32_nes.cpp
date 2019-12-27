@@ -265,8 +265,8 @@ Win32_RenderImGui(NESContext *nesContext)
 {
     bool8 quit = false;
 
-    MENU_REQUEST request = RenderMainMenu(&gNesCode);
-    // TODO(pgm): Render the NES State
+    RenderState(nesContext);
+    MENU_REQUEST request = RenderMainMenu();    
     ImGui::Render();
 
     switch (request)
