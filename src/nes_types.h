@@ -18,4 +18,7 @@ typedef uint64_t u64;
 typedef float real32;
 typedef double real64;
 
+#define KB(v) v * 1024
+#define MB(v) KB(v) * 1024
+
 #endif // NES_TYPES_H

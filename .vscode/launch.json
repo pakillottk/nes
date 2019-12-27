@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/build/win32_nes.exe.",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/build",
             "environment": [],
             "externalConsole": false,
             "preLaunchTask": "build.bat"

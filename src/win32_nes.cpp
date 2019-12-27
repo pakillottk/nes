@@ -3,6 +3,7 @@
 #include <gl/GL.h>
 
 #include "nes_types.h"
+#include "nes.h"
 
 // imgui source code
 #include "../vendor/imgui/imgui.cpp"
@@ -14,10 +15,104 @@
 
 #define internal static
 #define local_persist static
+#define global_variable static
 
-local_persist HGLRC gOglContext;
+struct NesCode
+{
+    bool8 isValid;
+    HMODULE dllHandle;
+    FILETIME lastWriteTime;
+    nes_init *initialize;
+    nes_update *update;    
+};
+
+global_variable HGLRC gOglContext;
+global_variable NesCode gNesCode;
+global_variable NESContext gNesCtx;
 
 #define ABS(V) (V) < 0 ? -V : V
+
+NES_INIT(nesInitStub)
+{}
+NES_UPDATE(nesUpdateStub)
+{}
+
+internal FILETIME Win32_GetLastWriteTime(const char *filename)
+{
+    FILETIME lastWriteTime = {};
+
+    WIN32_FIND_DATA findData;
+    HANDLE fHandle = FindFirstFileA(filename, &findData);
+    if( fHandle != INVALID_HANDLE_VALUE )
+    {
+        lastWriteTime = findData.ftLastWriteTime;
+        FindClose(fHandle);
+    }
+    return(lastWriteTime);
+}
+
+// used for hot reload
+global_variable const char *liveDll = "NESLive.dll";
+
+internal 
+NesCode LoadNesCode(const char *targetFilename)
+{
+    NesCode nesCode;
+    nesCode.isValid = 0;
+    nesCode.lastWriteTime = Win32_GetLastWriteTime(targetFilename);
+
+    #if HOT_RELOAD
+        CopyFileA(targetFilename, liveDll, false);
+        nesCode.dllHandle = LoadLibraryA(liveDll);
+    #else
+        nesCode.dllHandle = LoadLibraryA(targetFilename);
+    #endif
+
+    if( nesCode.dllHandle )
+    {
+        nesCode.initialize = (nes_init*)GetProcAddress(nesCode.dllHandle, "NES_Init");
+        nesCode.update = (nes_update*)GetProcAddress(nesCode.dllHandle, "NES_Update");        
+        nesCode.isValid = nesCode.initialize != NULL && nesCode.update != NULL;
+    }
+
+    if( !nesCode.isValid )
+    {
+        nesCode.initialize = nesInitStub;
+        nesCode.update  = nesUpdateStub;        
+    }
+
+    return nesCode;
+} 
+
+internal void 
+UnloadNesCode(NesCode *nesCode)
+{
+    if( nesCode->isValid )
+    {
+        nesCode->isValid = 0;
+        nesCode->initialize = nesInitStub;
+        nesCode->update  = nesUpdateStub;        
+        FreeLibrary( nesCode->dllHandle );
+    }
+}
+
+#if HOT_RELOAD
+internal bool8 
+AttemptHotReload(const char * targetFilename, NesCode *nesCode)
+{
+    FILETIME targetWriteTime = Win32_GetLastWriteTime(targetFilename);
+    if( CompareFileTime(&targetWriteTime, &nesCode->lastWriteTime) != 0 )
+    {
+        // reload
+        UnloadNesCode(nesCode);
+        *nesCode = LoadNesCode(targetFilename);
+
+        return(TRUE);
+    }
+
+    return(FALSE);
+}
+#endif
 
 internal bool8
 Win32_MakeOpenGlContext(HWND Window)
@@ -98,6 +193,12 @@ Win32_RenderOGL()
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
+internal void
+Win32_RenderImGui()
+{
+    ImGui::ShowDemoWindow();
+}
+
 internal LRESULT CALLBACK 
 WindowProc(HWND   Window,
            UINT   Message,
@@ -149,13 +250,21 @@ WindowProc(HWND   Window,
             HDC dc = GetDC(Window);
             wglMakeCurrent(dc, gOglContext);
 
-            ImGui_ImplOpenGL3_NewFrame();
-            ImGui_ImplWin32_NewFrame();
-            ImGui::NewFrame();    
-            ImGui::Render();
+            gNesCode.update(&gNesCtx);
 
-            Win32_RenderOGL();
+            // render the nes framebuffer
+            Win32_RenderOGL();    
+
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplWin32_NewFrame();            
+            ImGui::NewFrame();    
+
+            // render the NES State
+            Win32_RenderImGui();
+
+            ImGui::Render();    
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
             SwapBuffers(dc);
         }
         break;
@@ -175,6 +284,8 @@ WinMain(HINSTANCE hInstance,
         LPSTR     lpCmdLine,
         int       nShowCmd)
 {
+    gNesCtx = {};
+
     WNDCLASS wc = {};    
     wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WindowProc;
@@ -197,9 +308,19 @@ WinMain(HINSTANCE hInstance,
             hInstance,
             NULL
         );
-        
+
+        gNesCode = LoadNesCode("NES.dll");
+        gNesCode.initialize(&gNesCtx);
+
         for(;;)
         {
+            #if HOT_RELOAD
+                if( AttemptHotReload("NES.dll", &gNesCode) )
+                {
+                    gNesCode.initialize(&gNesCtx);
+                }
+            #endif
+
             MSG Message;
             BOOL MessageResult = GetMessage(&Message, 0, 0, 0);
             if( MessageResult > 0 )
