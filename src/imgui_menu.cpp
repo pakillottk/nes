@@ -16,7 +16,7 @@ enum MENU_REQUEST
 };
 
 internal MENU_REQUEST
-RenderMainMenu()
+RenderMainMenu(NESContext *context)
 {
     MENU_REQUEST Result = kNone;
 
@@ -34,10 +34,42 @@ RenderMainMenu()
             }
             ImGui::EndMenu();
         }
+        if( ImGui::BeginMenu("View") )
+        {
+            ImGui::Checkbox("Debugger", &context->showDebugger);
+            ImGui::Checkbox("Pattern tables", &context->showPatternTables);
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
     }
 
     return(Result);
+}
+
+internal const char*
+RunModeToStr(RUN_MODE mode)
+{
+    local_persist const char *run_mode_str[3] =
+    {
+        "Running",
+        "Paused",
+        "Stepping"
+    };
+
+    return(run_mode_str[mode]);
+}
+
+internal const ImVec4
+RunModeColor(RUN_MODE mode)
+{
+    local_persist const ImVec4 run_mode_colors[3] =
+    {
+        {0.0f, 1.0f, 0.0f, 1.0f},
+        {1.0f, 0.0f, 0.0f, 1.0f},
+        {1.0f, 1.0f, 0.0f, 1.0f}
+    };
+
+    return run_mode_colors[mode];
 }
 
 internal const char*
@@ -72,14 +104,21 @@ DisplayInstruction(Instruction *ins)
     ImGui::NextColumn();
     ImGui::Text("%s", AddrModeToStr(ins->addr_mode));
     ImGui::NextColumn();
+    ImGui::Text("0x%x", ins->operand);
+    ImGui::NextColumn();
     ImGui::Text("%d", ins->cycles);
     ImGui::NextColumn();
 }
 
 internal void
-RenderState(NESContext *nesContext)
+RenderDebugger(NESContext *nesContext)
 {
-    ImGui::Begin("Debugger");
+    if( !nesContext->showDebugger )
+    {
+        return;
+    }
+
+    ImGui::Begin("Debugger", &nesContext->showDebugger);
         ImGui::Text("Total cycles: %d", nesContext->totalCycles);        
         ImGui::SameLine();
         ImGui::Text("Frame cycles: %d", nesContext->deltaCycles);
@@ -100,6 +139,8 @@ RenderState(NESContext *nesContext)
         {
             nesContext->runMode = kStep;
         }
+        ImGui::SameLine();
+        ImGui::TextColored( RunModeColor(nesContext->runMode), RunModeToStr(nesContext->runMode) );
 
         ImGui::Separator();
 
@@ -134,7 +175,7 @@ RenderState(NESContext *nesContext)
 
         ImGui::Separator();
 
-        ImGui::Columns(4, "ins_table_header");
+        ImGui::Columns(5, "ins_table_header");
 
         ImGui::Text("Op Code");
         ImGui::NextColumn();
@@ -145,13 +186,16 @@ RenderState(NESContext *nesContext)
         ImGui::Text("Address Mode");
         ImGui::NextColumn();
 
+        ImGui::Text("Operand");
+        ImGui::NextColumn();
+
         ImGui::Text("Cycles");
         ImGui::NextColumn();
 
         ImGui::Columns(1);
         ImGui::Separator();
         ImGui::BeginChild("Instructions", ImVec2(0,0), false);
-            ImGui::Columns(4, "ins_table_rows", true);
+            ImGui::Columns(5, "ins_table_rows", true);
 
             if( nesContext->instructionQueueOverflow )
             {
@@ -171,4 +215,10 @@ RenderState(NESContext *nesContext)
             ImGui::Columns(1);
         ImGui::EndChild();
     ImGui::End();
+}
+
+internal void
+RenderState(NESContext *nesContext)
+{
+    RenderDebugger(nesContext);
 }

@@ -4,7 +4,7 @@
 
 #include "nes.h"
 
-byte* RB(NES *nes, u16 addr);
-byte* WB(NES *nes, u16 addr, u8 v);
+byte RB(NES *nes, u16 addr);
+byte WB(NES *nes, u16 addr, u8 v);
 
 #endif // NES_BUS_H

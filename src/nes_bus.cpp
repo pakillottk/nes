@@ -4,7 +4,7 @@
 
 #define internal static
 
-internal byte*
+internal byte
 MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
 {
     byte* chunk;
@@ -60,7 +60,7 @@ MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
             }        
         } 
 
-        return &nes->cartridge.ROM[mapAddr];
+        return nes->cartridge.ROM[mapAddr];
     }
     if( set ) 
     {
@@ -68,16 +68,16 @@ MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
         (*chunk) = v;
     }
     
-    return chunk;
+    return *chunk;
 }
 
-byte*
+byte
 RB(NES *nes, u16 addr)
 {
     return MemAccess(nes, addr, false, 0);
 }
 
-byte*
+byte
 WB(NES *nes, u16 addr, u8 v)
 {
     return MemAccess(nes, addr, true, v);

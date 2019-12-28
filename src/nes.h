@@ -66,7 +66,94 @@ struct CPU_6502
 
 struct PPU_2C02
 {
-    // TODO
+    bool8 frameRendered;
+    bool8 nmiRequested;
+    bool8 latcher;
+    byte dataBuffer;   
+
+    // VRAM
+    byte nameTable[2][1024];
+    byte patternTable[2][4096];
+    byte palette[32];
+
+    byte fineX;
+    // scanlines
+    u32 cycle;
+    i32 scanline;
+
+    // PPUCTRL
+    union 
+    {
+        byte data;
+        struct
+        {
+            byte nametableX : 1;
+            byte nametableY : 1;
+            byte increment : 1;
+            byte spritePattern : 1;
+            byte bgPattern : 1;
+            byte spriteSize : 1;
+            byte masterSlave : 1; // nes doesn't use this
+            byte nmi : 1;
+        };
+    } ppuctrl;
+
+    // PPUMASK
+    union
+    {
+        byte data;
+        struct
+        {
+            byte grayscale : 1;
+            byte showLeftBg : 1;
+            byte showLeftSprites : 1;
+            byte showBg : 1;
+            byte showSprites : 1;
+            byte redEmphasis : 1;
+            byte greenEmphasis : 1;
+            byte blueEmphasis : 1;
+        };        
+    } ppumask;
+
+    // PPUSTATUS
+    union 
+    {
+        byte data;
+        struct
+        {
+            byte padding : 5; // unused flags
+            byte overflow : 1;
+            byte ZeroHit : 1;
+            byte vblank : 1;
+        };        
+    } ppustatus;
+
+    union loopy
+    {
+        u16 data;
+        struct
+        {
+            u16 coarseX : 5;
+			u16 coarseY : 5;
+			u16 nametableX : 1;
+			u16 nametableY : 1;
+			u16 fineY : 3;
+			u16 padding : 1;
+        };
+    };
+
+    loopy vram_addr;
+    loopy tram_addr;
+
+    // rendering
+    byte bgTileId;
+	byte bgTileAttrib;
+	byte bgTileLsb;
+	byte bgTileMsb;
+    u16 bgPatternLo;
+	u16 bgPatternHi;
+	u16 bgAttribLo;
+	u16 bgAttribHi;
 };
 
 struct APU_RP2A 
@@ -136,6 +223,7 @@ struct Instruction
     byte opcode; // hex value of the instruction
     u32 cycles; // duration in cycles
     ADDR_MODE addr_mode; // addressing mode 
+    u32 operand;
     bool8 keep_pc;   // if true, pc wont be incremented
 }; // Note that length in bytes is implicit by the addr_mode
 
@@ -155,15 +243,17 @@ const u32 INSTRUCTION_BUFFER_SIZE = 50;
 
 enum RUN_MODE
 {
-    kPause = 0,
-    kRun,
+    kRun = 0,
+    kPause,
     kStep
 };
 
 struct NESContext
 {
+    bool showDebugger;
+    bool showPatternTables;
     u32 frameBufferTextId;
-    u32 patternTableTexId;
+    u32 patternTableTexId[2];
     u32 backbuffer[ NES_FRAMEBUFFER_WIDTH *  NES_FRAMEBUFFER_HEIGHT ];
     NES nes;
     RUN_MODE runMode;

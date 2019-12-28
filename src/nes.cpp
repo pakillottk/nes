@@ -54,21 +54,37 @@ LoadROM(const char *romPath, NESCartridge *cartridge)
 
 NES_INIT(NES_Init)
 {
-    memset(context->nes.RAM, 0, sizeof(context->nes.RAM));
+    // memset(context->nes.RAM, 0, sizeof(context->nes.RAM));
 
     if( LoadROM(romPath, &context->nes.cartridge) )
     {
         InitializeCPU(&context->nes.cpu, &context->nes); 
-        InitializePPU(&context->nes.ppu);
+        InitializePPU(&context->nes.ppu);        
     }
 }
 
 NES_UPDATE(NES_Update)
 {
     if( context->nes.cartridge.loaded && context->runMode != kPause )
-    {        
-        UpdateCPU(&context->nes.cpu, context);
-        UpdatePPU(&context->nes.ppu, context);
+    {    
+        // generate a new frame
+        context->nes.ppu.frameRendered = false;
+        do
+        {
+            UpdatePPU(&context->nes.ppu, context);
+
+            if( context->nes.ppu.nmiRequested )
+            {
+                context->nes.ppu.nmiRequested = false;
+                context->nes.cpu.nmi_now = true;
+            }
+            // the ppu is approx 3 times faster
+            for( u32 i = 0; i < 3; ++i )
+            {
+                UpdateCPU(&context->nes.cpu, context);
+            }
+        } while( context->runMode == kRun && !context->nes.ppu.frameRendered );        
+        
         if( context->runMode == kStep ) 
         {
             context->runMode = kPause;

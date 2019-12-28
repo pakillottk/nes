@@ -241,7 +241,8 @@ internal void
 Win32_RenderOGL(NESContext *nesContext)
 {
     glClearColor( 0.0, 0.0, 0.0, 1.0 );
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
 
     glEnable(GL_TEXTURE_2D);
     SwapNesBackbuffer(nesContext);
@@ -259,6 +260,95 @@ Win32_RenderOGL(NESContext *nesContext)
         glTexCoord2f(0.0f, 1.0f);
         glVertex3f(-1.0f, 1.0f, -1.0f);
     glEnd();
+
+    if( nesContext->showPatternTables )
+    {
+        if( nesContext->patternTableTexId[0] > 0 )
+        {
+            glBindTexture(GL_TEXTURE_2D, nesContext->patternTableTexId[0]);
+            glBegin(GL_QUADS);
+                glTexCoord2f(0.0f, 0.0f);
+                glVertex3f(0.5f,-1.0f, -1.0f);
+
+                glTexCoord2f(1.0f, 0.0f);
+                glVertex3f(0.75f,-1.0f, -1.0f);
+
+                glTexCoord2f(1.0f, 1.0f);
+                glVertex3f(0.75f, 0.0f, -1.0f);
+
+                glTexCoord2f(0.0f, 1.0f);
+                glVertex3f(0.5f, 0.0f, -1.0f);
+            glEnd();
+        }
+        if( nesContext->patternTableTexId[1] > 0 )
+        {
+            glBindTexture(GL_TEXTURE_2D, nesContext->patternTableTexId[0]);
+            glBegin(GL_QUADS);
+                glTexCoord2f(0.0f, 0.0f);
+                glVertex3f(0.75f,-1.0f, -1.0f);
+
+                glTexCoord2f(1.0f, 0.0f);
+                glVertex3f(1.0f,-1.0f, -1.0f);
+
+                glTexCoord2f(1.0f, 1.0f);
+                glVertex3f(1.0f, 0.0f, -1.0f);
+
+                glTexCoord2f(0.0f, 1.0f);
+                glVertex3f(0.75f, 0.0f, -1.0f);
+            glEnd();
+        }
+    }
+}
+
+internal void 
+Win32_MakePatternTableTexture(NESContext *nesContext, NESCartridge *cartridge, byte i)
+{
+    u32 patternData[16 * 8 * 16 * 8 ];
+
+    for( u16 tileY = 0; tileY < 16; ++tileY )
+    {
+        for( u16 tileX = 0; tileX < 16; ++tileX )
+        {
+			u16 offset = tileY * 256 + tileX * 16;
+            for(i16 row = 0; row < 8; ++row)
+			{
+				byte tile_lsb = cartridge->VROM[i * 0x1000 + offset + row + 0x0000];
+				byte tile_msb = cartridge->VROM[i * 0x1000 + offset + row + 0x0008];
+
+				for (i16 col = 0; col < 8; ++col)
+				{
+					byte pixel = (tile_lsb & 0x01) + (tile_msb & 0x01);
+					tile_lsb >>= 1; tile_msb >>= 1;
+
+                    byte x = tileX * 8 + (7 - col);
+                    byte y = (tileY * 8 + row);
+
+                    patternData[ (y * 16 * 8) + x ] = 0xffffff * (real32(pixel) / 4.0f);
+				}
+			}
+        }
+    }
+
+    // Fill the texture
+    glGenTextures(1, &nesContext->patternTableTexId[i]);
+    glBindTexture(GL_TEXTURE_2D, nesContext->patternTableTexId[i]);
+    glTexImage2D(   
+        GL_TEXTURE_2D, 
+        0, 
+        GL_RGBA8, 
+        16 * 8,
+        16 * 8,
+        0,
+        GL_RGBA, 
+        GL_UNSIGNED_BYTE, 
+        patternData
+    );
+
+    // Config the texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Linear Filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Linear Filtering
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 }
 
 internal bool8
@@ -267,7 +357,7 @@ Win32_RenderImGui(NesCode *nesCode, NESContext *nesContext)
     bool8 quit = false;
 
     RenderState(nesContext);
-    MENU_REQUEST request = RenderMainMenu();    
+    MENU_REQUEST request = RenderMainMenu(nesContext);    
     ImGui::Render();
 
     switch (request)
@@ -279,6 +369,8 @@ Win32_RenderImGui(NesCode *nesCode, NESContext *nesContext)
             {
                 nesCode->initialize(nesContext, path);
                 strcpy(gCurrentROM, path);
+                Win32_MakePatternTableTexture(nesContext, &nesContext->nes.cartridge, 0);
+                Win32_MakePatternTableTexture(nesContext, &nesContext->nes.cartridge, 1);
             }
         }            
         break;
@@ -381,6 +473,10 @@ WinMain(HINSTANCE hInstance,
         int       nShowCmd)
 {
     gNesCtx = {};
+    // TODO(pgm) For now starts with debugger enabled
+    gNesCtx.showDebugger = true;
+    // gNesCtx.showPatternTables = true;
+
     gCurrentROM[0] = 0;
 
     WNDCLASS wc = {};    
