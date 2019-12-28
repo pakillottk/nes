@@ -26,40 +26,35 @@ MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
             return ReadPPU(nes, addr);
         }
     } 
-    else if( addr >= 0x4000 && addr <= 0x4018 ) 
+    else if( addr >= 0x4000 && addr <= 0x4015 ) 
     { 
         // APU I/O Space
 
         //TODO(pgm) for now return 0        
         return 0;
     } 
-    else 
+    else if( addr >= 0x4016 && addr <= 0x4017 )
+    {
+        // gamepads
+        if( set )
+        {
+            return nes->gamepadShifter[ addr & 0x0001 ] = nes->gamepad[ addr & 0x0001 ].buttons.state;        
+        }
+        else
+        {
+            byte data = (nes->gamepadShifter[ addr & 0x0001 ] & 0x80) > 0;
+            nes->gamepadShifter[ addr & 0x0001 ] <<= 1;
+            return data;
+        }
+    }
+    else if(addr >= 0x8000 && addr <= 0xFFFF) 
     { 
-        // Cartridge space        
-        // 0x6000 - 0x7FFF
+        // Cartridge space   
         inCart = true;
 
         //TODO(pgm) RAM
-        u16 mapAddr = addr;
-        if( addr >= 0x8000 && addr <= 0xBFFF ) 
-        {
-            // First ROM bank    
-            mapAddr = (addr%16384);
-        } 
-        else if(addr >= 0xC000 && addr <= 0xFFFF) 
-        { 
-            // Second ROM banks
-            if( nes->cartridge.pages < 16 ) 
-            {
-                //mirror
-                mapAddr = (addr%16384);
-            } 
-            else 
-            {
-                mapAddr = 16384 + (addr%16384); //Skip first bank
-            }        
-        } 
-
+        u16 mapAddr = addr & (nes->cartridge.pages > 1 ? 0x7FFF : 0x3FFF);            
+        // u16 mapAddr = addr % ROM_PAGESIZE;
         return nes->cartridge.ROM[mapAddr];
     }
     if( set ) 

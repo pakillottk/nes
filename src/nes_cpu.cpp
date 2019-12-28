@@ -90,13 +90,15 @@ CalcOperand(NESContext *context, NES* nes, ADDR_MODE mode)
 internal void 
 Push( NES *nes, byte v )
 {
-    WB( nes, 0x100 + (nes->cpu.SP--), v );
+    WB( nes, 0x100 + nes->cpu.SP, v );
+    --nes->cpu.SP;
 }
 
 internal byte 
 Pull( NES *nes )
 {
-    return(RB( nes, 0x100 + (++nes->cpu.SP) ));
+    ++nes->cpu.SP;
+    return(RB( nes, 0x100 + nes->cpu.SP));
 }
 
 /*
@@ -130,7 +132,7 @@ Pull( NES *nes )
 #define STACK_PULL16( TO ) tmp8b = Pull(&context->nes); temp = Pull(&context->nes); TO = pgmbin::combineLittleEndian(tmp8b, temp);
 
 //Set the PC from the Stack
-#define RESTORE_PC() STACK_PULL16(PC) PC++; keep_pc = true;
+#define RESTORE_PC() STACK_PULL16(PC) /*PC++;*/ keep_pc = true;
 
 //Sets N to 1 if VAL MSB is set
 #define UPDATE_N( VAL ) P = pgmbin::setBitAt<N_flag>( pgmbin::getBitAt<8>(VAL), P );
@@ -193,8 +195,8 @@ Pull( NES *nes )
 #define INC(VAL) tmp8b = VAL+1;
 
 //Stores PC and P, disable interrupts and jumps to interrupt handler
-#define BRK() if( pgmbin::getBitAt<I_flag>(P) ){ STACK_PUSH16((PC-1)) STACK_PUSH(P) P = pgmbin::setBitAt<I_flag>(0, P); \
-              if( context->nes.cpu.nmi_now ){  PC = pgmbin::combineLittleEndian( RB(&context->nes, 0xFFFA), RB(&context->nes, 0xFFFB)); keep_pc = true; }}
+#define BRK() if( pgmbin::getBitAt<I_flag>(P) ){ P = pgmbin::setBitAt<B_flag>(1, P); STACK_PUSH16((PC-1)) STACK_PUSH(P) P = pgmbin::setBitAt<I_flag>(0, P); \
+              PC = pgmbin::combineLittleEndian( RB(&context->nes, 0xFFFE), RB(&context->nes, 0xFFFF)); keep_pc = true; }
 //Recovers from interruption
 #define RTI() STACK_PULL(P) RESTORE_PC() keep_pc = true; context->nes.cpu.nmi_processing = false;
 
@@ -207,6 +209,7 @@ Evaluate(byte opcode, NESContext *context)
     I.cycles = 0;   
     I.addr_mode = IMPL;  
     I.keep_pc = false;
+    I.offset = context->nes.cpu.PC;
 
     EVALUATOR_HEADER()
 
@@ -351,7 +354,7 @@ Evaluate(byte opcode, NESContext *context)
         //PHA       
         OP( 0x48,           "PHA",        3,         IMPL,                                             STACK_PUSH(regs[REG_A]))
         //PHP       
-        OP( 0x08,           "PHP",        3,         IMPL,                                                       STACK_PUSH(P))
+        OP( 0x08,           "PHP",        3,         IMPL,                         P = pgmbin::setBitAt<5>(1,P); STACK_PUSH(P))
         //PLA       
         OP( 0x68,           "PLA",        4,         IMPL,                             STACK_PULL(tmp8b) SET_REG(REG_A, tmp8b))
         //PLP       
@@ -370,7 +373,7 @@ Evaluate(byte opcode, NESContext *context)
         OP( 0x7e,     "ROR abs,x",        7,        ABS_X,             READ() ROR() STORE(addr, tmp8b) UPDATE_NZFLAGS( tmp8b ))  
         //RETURNS
         OP( 0x40,           "RTI",        6,         IMPL,                                                               RTI())
-        OP( 0x60,           "RTS",        6,         IMPL,                                                        RESTORE_PC())      
+        OP( 0x60,           "RTS",        6,         IMPL,                                                   RESTORE_PC() ++PC)      
         //BRK
         OP( 0x00,           "brk",        1,         IMPL,                                                               BRK())  
         //SBCs
@@ -414,12 +417,39 @@ Evaluate(byte opcode, NESContext *context)
         OP( 0x9a,           "TXS",        2,         IMPL,                                                     SP = regs[REG_X])
         //TYA
         OP( 0x98,           "TYA",        2,         IMPL,                  regs[REG_A]=regs[REG_Y]; UPDATE_NZFLAGS(regs[REG_A]))
-        case 0xEA:  
+        // Unofficial opcodes        
+        // ================================================
+        OP( 0x04,       "*NOP zpg",       1,         ZPG,{})
+        OP( 0x44,       "*NOP zpg",       1,         ZPG,{})
+        OP( 0x64,       "*NOP zpg",       1,         ZPG,{})
+        OP( 0x0c,       "*NOP abs",       1,         ABS,{})
+        OP( 0x14,     "*NOP zpg,x",       1,         ZPG_X,{})
+        OP( 0x34,     "*NOP zpg,x",       1,         ZPG_X,{})
+        OP( 0x54,     "*NOP zpg,x",       1,         ZPG_X,{})
+        OP( 0x74,     "*NOP zpg,x",       1,         ZPG_X,{})
+        OP( 0xd4,     "*NOP zpg,x",       1,         ZPG_X,{})
+        OP( 0xf4,     "*NOP zpg,x",       1,         ZPG_X,{})
+        OP( 0x1c,     "*NOP abs,x",       1,         ABS_X,{})
+        OP( 0x3c,     "*NOP abs,x",       1,         ABS_X,{})
+        OP( 0x5c,     "*NOP abs,x",       1,         ABS_X,{})
+        OP( 0x7c,     "*NOP abs,x",       1,         ABS_X,{})
+        OP( 0xdc,     "*NOP abs,x",       1,         ABS_X,{})
+        OP( 0xfc,     "*NOP abs,x",       1,         ABS_X,{})
+        OP( 0x80,         "*NOP #",       1,         IMMEDIATE,{})
+        case 0x1a:
+        case 0x3a:
+        case 0x5a:
+        case 0x7a:
+        case 0xda:
+        case 0xfa:
+        case 0xea:  
             return I;
         default:            
-            fprintf(stderr, "Unknown OPCODE 0x%x\n", opcode);            
+            fprintf(stderr, "Unknown OPCODE 0x%x\n", opcode);
+            // handle as NOP (can happen if using unofficial opcodes)
+            return I;            
     }
-    
+
     I.label = label;    
     I.opcode = opcode;    
     I.cycles = cycles;   
@@ -436,8 +466,8 @@ InitializeCPU(CPU_6502 *cpu, NES *nes)
     cpu->nmi_now = cpu->nmi_processing = false;
     cpu->SP = 0xFD;
     cpu->P.flags = 0x24;
-    // cpu->PC=0xC000;
-    cpu->PC = COMBINE( RB(nes, 0xFFFD), RB(nes, 0xFFFC) );
+    cpu->PC=0xC000;
+    // cpu->PC = COMBINE( RB(nes, 0xFFFD), RB(nes, 0xFFFC) );
     // cpu->PC = pgmbin::combineLittleEndian( *RB(nes, 0xFFFC), *RB(nes, 0xFFFD) );
 }
 
@@ -453,10 +483,16 @@ UpdateCPU(CPU_6502 *cpu, NESContext *context)
     else if( !cpu->nmi_processing ) 
     {
         cpu->nmi_processing = true;
-        opcode = 0x00;
+        u16 pc = cpu->PC;
+        STACK_PUSH16( pc );
+        cpu->P.B = true;
+        STACK_PUSH( cpu->P.flags );
+        cpu->P.I = false;
+        cpu->PC = pgmbin::combineLittleEndian( RB( &context->nes, 0xFFFA ), RB( &context->nes, 0xFFFB ));
+        opcode = RB(&context->nes, cpu->PC);
     }
     
-    Instruction decoded = Evaluate( opcode, context );
+    Instruction decoded = Evaluate( opcode, context );    
     if( !decoded.keep_pc ) 
     {
        cpu->PC = cpu->PC + addr_mode_length[ decoded.addr_mode ]; 

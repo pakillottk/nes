@@ -4,8 +4,8 @@
 
 #include "nes_types.h"
 
-static const u32 ROM_PAGESIZE = 16384;
-static const u32 VROM_PAGESIZE = 8192;
+static const u32 ROM_PAGESIZE = KB(16);
+static const u32 VROM_PAGESIZE = KB(8);
 
 enum MIRRORING
 {
@@ -31,6 +31,18 @@ enum CPU_REG
     REG_Y = 2,
 };
 
+enum P_flags 
+{
+    C_flag=1,
+    Z_flag=2,
+    I_flag=3,
+    D_flag=4,
+    B_flag=5,
+    B2_flag=6,
+    V_flag=7,
+    N_flag=8
+};
+
 struct CPU_6502
 {
     u16 PC;
@@ -54,6 +66,8 @@ struct CPU_6502
             byte Z : 1;
             byte I : 1;
             byte D : 1;
+            byte B : 1;
+            byte B2 : 1; // unused
             byte V : 1;
             byte N : 1;        
         };
@@ -168,14 +182,14 @@ struct NESGamepad
         byte state;
         struct
         {
-            byte left : 1;
             byte up : 1;
-            byte right : 1;
+            byte left : 1;
             byte down : 1;
+            byte right : 1;
+            byte start : 1;
+            byte select : 1;
             byte a : 1;
             byte b : 1;
-            byte select : 1;
-            byte start : 1;
         };
     } buttons;    
 };
@@ -207,18 +221,9 @@ static const unsigned int addr_mode_length[] = {
     2
 };
 
-enum P_flags 
-{
-    C_flag=1,
-    Z_flag=2,
-    I_flag=3,
-    D_flag=4,
-    V_flag=7,
-    N_flag=8
-};
-
 struct Instruction 
 {
+    u16 offset;
     const char* label; // Ins in Assembly
     byte opcode; // hex value of the instruction
     u32 cycles; // duration in cycles
@@ -234,7 +239,8 @@ struct NES
     CPU_6502 cpu;
     PPU_2C02 ppu;
     APU_RP2A apu;
-    NESGamepad gamepad;    
+    NESGamepad gamepad[2];   
+    byte gamepadShifter[2]; 
 };
 
 const u32 NES_FRAMEBUFFER_WIDTH = 256;
@@ -253,6 +259,7 @@ struct NESContext
     bool showDebugger;
     bool showPatternTables;
     u32 frameBufferTextId;
+    u32 nameTableTextId[2];
     u32 patternTableTexId[2];
     u32 backbuffer[ NES_FRAMEBUFFER_WIDTH *  NES_FRAMEBUFFER_HEIGHT ];
     NES nes;

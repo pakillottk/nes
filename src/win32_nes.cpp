@@ -19,6 +19,8 @@
 #define local_persist static
 #define global_variable static
 
+#define RGB(R, G, B)  u32(0xff000000) | (R&0xff) << 16 | (G&0xFF) << 8  | (B&0xFF)
+
 global_variable HGLRC gOglContext;
 global_variable NesCode gNesCode;
 global_variable NESContext gNesCtx;
@@ -137,7 +139,7 @@ SwapNesBackbuffer(NESContext *nesContext)
     glTexImage2D(   
         GL_TEXTURE_2D, 
         0, 
-        GL_RGBA8, 
+        GL_RGBA, 
         NES_FRAMEBUFFER_WIDTH,
         NES_FRAMEBUFFER_HEIGHT,
         0,
@@ -237,69 +239,6 @@ Win32_InitializeImGui(HWND Window)
     return(true);
 }
 
-internal void
-Win32_RenderOGL(NESContext *nesContext)
-{
-    glClearColor( 0.0, 0.0, 0.0, 1.0 );
-    glClear(GL_COLOR_BUFFER_BIT);
-    glDisable(GL_DEPTH_TEST);
-
-    glEnable(GL_TEXTURE_2D);
-    SwapNesBackbuffer(nesContext);
-
-    glBegin(GL_QUADS);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex3f(-1.0f,-1.0f, -1.0f);
-
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex3f( 1.0f,-1.0f, -1.0f);
-
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex3f( 1.0f, 1.0f, -1.0f);
-
-        glTexCoord2f(0.0f, 1.0f);
-        glVertex3f(-1.0f, 1.0f, -1.0f);
-    glEnd();
-
-    if( nesContext->showPatternTables )
-    {
-        if( nesContext->patternTableTexId[0] > 0 )
-        {
-            glBindTexture(GL_TEXTURE_2D, nesContext->patternTableTexId[0]);
-            glBegin(GL_QUADS);
-                glTexCoord2f(0.0f, 0.0f);
-                glVertex3f(0.5f,-1.0f, -1.0f);
-
-                glTexCoord2f(1.0f, 0.0f);
-                glVertex3f(0.75f,-1.0f, -1.0f);
-
-                glTexCoord2f(1.0f, 1.0f);
-                glVertex3f(0.75f, 0.0f, -1.0f);
-
-                glTexCoord2f(0.0f, 1.0f);
-                glVertex3f(0.5f, 0.0f, -1.0f);
-            glEnd();
-        }
-        if( nesContext->patternTableTexId[1] > 0 )
-        {
-            glBindTexture(GL_TEXTURE_2D, nesContext->patternTableTexId[0]);
-            glBegin(GL_QUADS);
-                glTexCoord2f(0.0f, 0.0f);
-                glVertex3f(0.75f,-1.0f, -1.0f);
-
-                glTexCoord2f(1.0f, 0.0f);
-                glVertex3f(1.0f,-1.0f, -1.0f);
-
-                glTexCoord2f(1.0f, 1.0f);
-                glVertex3f(1.0f, 0.0f, -1.0f);
-
-                glTexCoord2f(0.0f, 1.0f);
-                glVertex3f(0.75f, 0.0f, -1.0f);
-            glEnd();
-        }
-    }
-}
-
 internal void 
 Win32_MakePatternTableTexture(NESContext *nesContext, NESCartridge *cartridge, byte i)
 {
@@ -349,6 +288,75 @@ Win32_MakePatternTableTexture(NESContext *nesContext, NESCartridge *cartridge, b
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Linear Filtering
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+}
+
+internal void
+Win32_MakeNameTableTexture(NESContext *nesContext, byte i)
+{
+    u32 nameTableData[ 32 * 32 ];
+
+    for( u32 name = 0; name < 32 * 32; ++name )
+    {
+        byte tableName = nesContext->nes.ppu.nameTable[i][name];
+        nameTableData[name] = RGB( tableName, tableName, tableName );
+    }
+
+    // Fill the texture
+    if( nesContext->nameTableTextId[i] == 0 )
+    {
+        glGenTextures(1, &nesContext->nameTableTextId[i]);
+    }
+    glBindTexture(GL_TEXTURE_2D, nesContext->nameTableTextId[i]);
+    glTexImage2D(   
+        GL_TEXTURE_2D, 
+        0, 
+        GL_RGBA8, 
+        32,
+        32,
+        0,
+        GL_RGBA, 
+        GL_UNSIGNED_BYTE, 
+        nameTableData
+    );
+
+    // Config the texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Linear Filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Linear Filtering
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+}
+
+internal void
+Win32_RenderOGL(NESContext *nesContext)
+{
+    glClearColor( 0.0, 0.0, 0.0, 1.0 );
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
+
+    glEnable(GL_TEXTURE_2D);
+    SwapNesBackbuffer(nesContext);
+    // Win32_MakeNameTableTexture(nesContext, 0);
+
+    glPushMatrix();
+
+    glScalef(1.0f, -1.0f, 1.0f);
+
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glBegin(GL_QUADS);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex3f(-1.0f,-1.0f, -1.0f);
+
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex3f( 1.0f,-1.0f, -1.0f);
+
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex3f( 1.0f, 1.0f, -1.0f);
+
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex3f(-1.0f, 1.0f, -1.0f);
+    glEnd();
+
+    glPopMatrix();
 }
 
 internal bool8
@@ -432,12 +440,59 @@ WindowProc(HWND   Window,
             PostQuitMessage(0);
         break;
 
+        case WM_KEYUP:
+        case WM_KEYDOWN:
+        {
+            bool8 pressed = Message == WM_KEYDOWN;
+            switch(WParam)
+            {
+                case 'Z':
+                    gNesCtx.nes.gamepad[0].buttons.a = pressed;
+                break;
+                case 'X':
+                    gNesCtx.nes.gamepad[0].buttons.b = pressed;
+                break;
+                case 'A':
+                    gNesCtx.nes.gamepad[0].buttons.select = pressed;
+                break;
+                case 'S':
+                    gNesCtx.nes.gamepad[0].buttons.start = pressed;
+                break;
+                case VK_LEFT:
+                    gNesCtx.nes.gamepad[0].buttons.left = pressed;
+                break;
+                case VK_UP:
+                    gNesCtx.nes.gamepad[0].buttons.up = pressed;
+                break;
+                case VK_RIGHT:
+                    gNesCtx.nes.gamepad[0].buttons.right = pressed;
+                break;
+                case VK_DOWN:
+                    gNesCtx.nes.gamepad[0].buttons.down = pressed;
+                break;
+            }
+        }            
+        break;
+
         case WM_PAINT:
         {
             HDC dc = GetDC(Window);
             wglMakeCurrent(dc, gOglContext);
 
             gNesCode.update(&gNesCtx);
+            // u32 color = 0xff00ff00;
+            // for( u32 i = 0; i < NES_FRAMEBUFFER_WIDTH * NES_FRAMEBUFFER_HEIGHT; ++i )
+            // {
+            //     // if( i > 0 && i % NES_FRAMEBUFFER_WIDTH == 0 )
+            //     // {
+            //     //     color >>= 16;
+            //     //     if( color == 0x0 )
+            //     //     {
+            //     //         color = 0xff000000;
+            //     //     }
+            //     // }
+            //     gNesCtx.backbuffer[ i ] = color;
+            // }
 
             // render the nes framebuffer
             Win32_RenderOGL( &gNesCtx );    

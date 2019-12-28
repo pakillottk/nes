@@ -98,6 +98,8 @@ AddrModeToStr(ADDR_MODE mode)
 internal void
 DisplayInstruction(Instruction *ins)
 {
+    ImGui::Text("0x%x", ins->offset);
+    ImGui::NextColumn();
     ImGui::Text("0x%x", ins->opcode);
     ImGui::NextColumn();
     ImGui::Text("%s", ins->label);
@@ -145,7 +147,7 @@ RenderDebugger(NESContext *nesContext)
         ImGui::Separator();
 
         ImGui::Text("PC: 0x%x", nesContext->nes.cpu.PC);        
-        ImGui::Text("SP: 0x%x", nesContext->nes.cpu.SP);        
+        ImGui::Text("SP: 0x%x", nesContext->nes.cpu.SP);
 
         ImGui::Columns(3, "cpu_regs_state");
         ImGui::Text("A: 0x%x", nesContext->nes.cpu.regs.A);
@@ -156,26 +158,31 @@ RenderDebugger(NESContext *nesContext)
         ImGui::NextColumn();
         
         ImGui::Columns(1);
-
-        ImGui::Columns(6);
-        ImGui::Text("C: %d", nesContext->nes.cpu.P.C);
+        
+        ImGui::Columns(7);
+        ImGui::Text("P: 0x%x", nesContext->nes.cpu.P.flags);        
         ImGui::NextColumn();
-        ImGui::Text("Z: %d", nesContext->nes.cpu.P.Z);
-        ImGui::NextColumn();
-        ImGui::Text("I: %d", nesContext->nes.cpu.P.I);
-        ImGui::NextColumn();
-        ImGui::Text("D: %d", nesContext->nes.cpu.P.D);
+        ImGui::Text("N: %d", nesContext->nes.cpu.P.N);
         ImGui::NextColumn();
         ImGui::Text("V: %d", nesContext->nes.cpu.P.V);
         ImGui::NextColumn();
-        ImGui::Text("N: %d", nesContext->nes.cpu.P.N);
+        ImGui::Text("D: %d", nesContext->nes.cpu.P.D);
+        ImGui::NextColumn();
+        ImGui::Text("I: %d", nesContext->nes.cpu.P.I);
+        ImGui::NextColumn();
+        ImGui::Text("Z: %d", nesContext->nes.cpu.P.Z);
+        ImGui::NextColumn();
+        ImGui::Text("C: %d", nesContext->nes.cpu.P.C);
         ImGui::NextColumn();
 
         ImGui::Columns(1);
 
         ImGui::Separator();
 
-        ImGui::Columns(5, "ins_table_header");
+        ImGui::Columns(6, "ins_table_header");
+
+        ImGui::Text("PC");
+        ImGui::NextColumn();
 
         ImGui::Text("Op Code");
         ImGui::NextColumn();
@@ -195,7 +202,7 @@ RenderDebugger(NESContext *nesContext)
         ImGui::Columns(1);
         ImGui::Separator();
         ImGui::BeginChild("Instructions", ImVec2(0,0), false);
-            ImGui::Columns(5, "ins_table_rows", true);
+            ImGui::Columns(6, "ins_table_rows", true);
 
             if( nesContext->instructionQueueOverflow )
             {
@@ -217,8 +224,28 @@ RenderDebugger(NESContext *nesContext)
     ImGui::End();
 }
 
+internal void 
+RenderPatternTables(NESContext *nesContext)
+{
+    if( nesContext->showPatternTables )
+    {        
+        ImGui::Begin("Pattern tables", &nesContext->showPatternTables);
+            if( nesContext->patternTableTexId[0] > 0 )
+            {
+                ImGui::Image(ImTextureID(nesContext->patternTableTexId[0]), ImVec2(256, 256));
+            }
+            ImGui::SameLine();
+            if( nesContext->patternTableTexId[1] > 0 )
+            {
+                ImGui::Image(ImTextureID(nesContext->patternTableTexId[1]), ImVec2(256, 256));
+            }   
+        ImGui::End();            
+    }
+} 
+
 internal void
 RenderState(NESContext *nesContext)
 {
     RenderDebugger(nesContext);
+    RenderPatternTables(nesContext);
 }

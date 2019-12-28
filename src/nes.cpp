@@ -10,6 +10,20 @@
 
 #define internal static
 
+// iNES Format Header
+struct NESHeader
+{
+    char id[4];
+    byte romBanks;
+    byte vromBanks;
+    byte mapper1;
+    byte mapper2;
+    byte ramSize;
+    byte system1;
+    byte system2;
+    char padding[5];
+} header;
+
 internal bool8
 LoadROM(const char *romPath, NESCartridge *cartridge)
 {
@@ -20,29 +34,41 @@ LoadROM(const char *romPath, NESCartridge *cartridge)
     }    
 
     bool8 ok = false;
-    // Check the NES header
-    if((fgetc(fp)=='N' && fgetc(fp)=='E' && fgetc(fp)=='S' && fgetc(fp)=='\32'))
+    // Check the NES header    
+    if( fread(&header, 1, sizeof(NESHeader), fp) == sizeof(NESHeader) )
     {
-        // read ROM header info
-        byte pgrSize16K = fgetc(fp);
-        byte chrSize8K  = fgetc(fp);
-        byte mapper1    = fgetc(fp);
-        byte mapper2   = fgetc(fp);
-        fseek( fp, 16, SEEK_SET );
+        // check the ROM header info
+        if( header.id[0] == 'N' && header.id[1] == 'E' && header.id[2] == 'S' && header.id[3] == '\32' )
+        {
+            // skip trainer data
+            if (header.mapper1 & 0x04)
+            {                
+                fseek(fp, 512, SEEK_CUR);
+            }
 
-        cartridge->mirror = (mapper1 & 0x01) ? kVertical : kHorizontal;
-        
-        // buffer the ROM
-        cartridge->pages = 8 * pgrSize16K;
-        cartridge->ROM = new unsigned char[ pgrSize16K * ROM_PAGESIZE];
-        fread( cartridge->ROM, pgrSize16K, 16384, fp );     
-        
-        // buffer the VROM
-        cartridge->vpages = 8 * chrSize8K;
-        cartridge->VROM = new unsigned char[ chrSize8K * VROM_PAGESIZE];
-        fread( cartridge->VROM, chrSize8K, 8192, fp );
-        
-        ok = true;
+            cartridge->mirror = (header.mapper1 & 0x01) ? kVertical : kHorizontal;
+            
+            // buffer the ROM
+            cartridge->pages = header.romBanks;
+            if( cartridge->ROM )
+            {
+                delete[] cartridge->ROM;
+            }
+            cartridge->ROM = new unsigned char[ cartridge->pages * ROM_PAGESIZE];
+            fread( cartridge->ROM, 1, cartridge->pages * ROM_PAGESIZE, fp );
+
+            // buffer the VROM
+            cartridge->vpages = header.vromBanks;
+            if( cartridge->VROM )
+            {
+                delete[] cartridge->VROM;
+            }
+            cartridge->VROM = new unsigned char[ cartridge->vpages * VROM_PAGESIZE];
+            fread( cartridge->VROM, 1, cartridge->vpages * VROM_PAGESIZE, fp );
+            
+            ok = true;
+        }
+
     }
 
     // close
@@ -55,12 +81,15 @@ LoadROM(const char *romPath, NESCartridge *cartridge)
 NES_INIT(NES_Init)
 {
     // memset(context->nes.RAM, 0, sizeof(context->nes.RAM));
-
+    
+    RUN_MODE prevRunMode = context->runMode;
+    context->runMode = kPause;
     if( LoadROM(romPath, &context->nes.cartridge) )
     {
         InitializeCPU(&context->nes.cpu, &context->nes); 
         InitializePPU(&context->nes.ppu);        
     }
+    context->runMode = prevRunMode;
 }
 
 NES_UPDATE(NES_Update)
@@ -69,7 +98,8 @@ NES_UPDATE(NES_Update)
     {    
         // generate a new frame
         context->nes.ppu.frameRendered = false;
-        do
+        context->totalCycles = 0;
+        // do
         {
             UpdatePPU(&context->nes.ppu, context);
 
@@ -79,11 +109,12 @@ NES_UPDATE(NES_Update)
                 context->nes.cpu.nmi_now = true;
             }
             // the ppu is approx 3 times faster
-            for( u32 i = 0; i < 3; ++i )
+            // for( u32 i = 0; i < 3; ++i )
             {
                 UpdateCPU(&context->nes.cpu, context);
+                context->totalCycles += context->deltaCycles;
             }
-        } while( context->runMode == kRun && !context->nes.ppu.frameRendered );        
+        } // while( !context->nes.ppu.frameRendered );        
         
         if( context->runMode == kStep ) 
         {
