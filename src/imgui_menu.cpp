@@ -227,20 +227,21 @@ RenderDebugger(NESContext *nesContext)
 internal void 
 RenderPatternTables(NESContext *nesContext)
 {
-    if( nesContext->showPatternTables )
-    {        
-        ImGui::Begin("Pattern tables", &nesContext->showPatternTables);
-            if( nesContext->patternTableTexId[0] > 0 )
-            {
-                ImGui::Image(ImTextureID(nesContext->patternTableTexId[0]), ImVec2(256, 256));
-            }
-            ImGui::SameLine();
-            if( nesContext->patternTableTexId[1] > 0 )
-            {
-                ImGui::Image(ImTextureID(nesContext->patternTableTexId[1]), ImVec2(256, 256));
-            }   
-        ImGui::End();            
-    }
+    // TODO(pgm) Doesn't work...
+    // if( nesContext->showPatternTables )
+    // {        
+    //     ImGui::Begin("Pattern tables", &nesContext->showPatternTables);
+    //         if( nesContext->patternTableTexId[0] > 0 )
+    //         {
+    //             ImGui::Image(ImTextureID(nesContext->patternTableTexId[0]), ImVec2(256, 256));
+    //         }
+    //         ImGui::SameLine();
+    //         if( nesContext->patternTableTexId[1] > 0 )
+    //         {
+    //             ImGui::Image(ImTextureID(nesContext->patternTableTexId[1]), ImVec2(256, 256));
+    //         }   
+    //     ImGui::End();            
+    // }
 } 
 
 internal void

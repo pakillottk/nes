@@ -10,7 +10,7 @@
 #include "../vendor/imgui/imgui.cpp"
 #include "../vendor/imgui/imgui_draw.cpp"
 #include "../vendor/imgui/imgui_widgets.cpp"
-#include "../vendor/imgui/imgui_demo.cpp"
+// #include "../vendor/imgui/imgui_demo.cpp"
 #include "../vendor/imgui/imgui_impl_win32.cpp"
 #include "../vendor/imgui/imgui_impl_opengl3.cpp"
 #include "imgui_menu.cpp"
@@ -19,12 +19,15 @@
 #define local_persist static
 #define global_variable static
 
-#define RGB(R, G, B)  u32(0xff000000) | (R&0xff) << 16 | (G&0xFF) << 8  | (B&0xFF)
+#define TO_RGB(R, G, B)  u32(0xff000000) | (R&0xff) << 16 | (G&0xFF) << 8  | (B&0xFF)
 
-global_variable HGLRC gOglContext;
-global_variable NesCode gNesCode;
-global_variable NESContext gNesCtx;
-global_variable char gCurrentROM[MAX_PATH];
+struct NESAppState
+{
+    HGLRC oglContext;
+    NesCode nesCode;
+    NESContext nesCtx;
+    char currentROM[MAX_PATH];
+};
 
 #define ABS(V) (V) < 0 ? -V : V
 
@@ -155,7 +158,7 @@ SwapNesBackbuffer(NESContext *nesContext)
 }
 
 internal bool8
-Win32_MakeOpenGlContext(HWND Window, NESContext *nesContext)
+Win32_MakeOpenGlContext(HWND Window, HGLRC *oglContext, NESContext *nesContext)
 {
     PIXELFORMATDESCRIPTOR pfd =
     {
@@ -183,8 +186,8 @@ Win32_MakeOpenGlContext(HWND Window, NESContext *nesContext)
     pixelFormat = ChoosePixelFormat(dc, &pfd); 
     SetPixelFormat(dc, pixelFormat, &pfd);
 
-    gOglContext = wglCreateContext(dc);
-    if( !wglMakeCurrent(dc, gOglContext) )
+    *oglContext = wglCreateContext(dc);
+    if( !wglMakeCurrent(dc, *oglContext) )
     {
         // TODO(pgm) Proper error handling
         MessageBoxA(Window, "The opengl context failed...", "Fatal error", 0);
@@ -303,7 +306,7 @@ Win32_MakeNameTableTexture(NESContext *nesContext, byte i)
     for( u32 name = 0; name < 32 * 32; ++name )
     {
         byte tableName = nesContext->nes.ppu.nameTable[i][name];
-        nameTableData[name] = RGB( tableName, tableName, tableName );
+        nameTableData[name] = TO_RGB( tableName, tableName, tableName );
     }
 
     // Fill the texture
@@ -364,7 +367,7 @@ Win32_RenderOGL(NESContext *nesContext)
 }
 
 internal bool8
-Win32_RenderImGui(NesCode *nesCode, NESContext *nesContext)
+Win32_RenderImGui(NesCode *nesCode, NESContext *nesContext, char *currentROM)
 {
     bool8 quit = false;
 
@@ -380,7 +383,7 @@ Win32_RenderImGui(NesCode *nesCode, NESContext *nesContext)
             if( OpenFileDialog(path) )
             {
                 nesCode->initialize(nesContext, path);
-                strcpy(gCurrentROM, path);
+                strcpy(currentROM, path);
                 Win32_MakePatternTableTexture(nesContext, &nesContext->nes.cartridge, 0);
                 Win32_MakePatternTableTexture(nesContext, &nesContext->nes.cartridge, 1);
             }
@@ -410,7 +413,10 @@ WindowProc(HWND   Window,
     {
         case WM_CREATE:
         {
-            if( !Win32_MakeOpenGlContext(Window, &gNesCtx)    
+            CREATESTRUCT *CreateStruct = (CREATESTRUCT *)LParam;
+            NESAppState *appState = (NESAppState*)CreateStruct->lpCreateParams;
+            SetWindowLongPtr(Window, GWLP_USERDATA, (LONG_PTR)appState);
+            if( !Win32_MakeOpenGlContext(Window, &appState->oglContext, &appState->nesCtx)    
                 || !Win32_InitializeImGui(Window))
             {
                 // exit the app if this fails...                
@@ -436,43 +442,49 @@ WindowProc(HWND   Window,
         break;
 
         case WM_DESTROY:
-            wglDeleteContext(gOglContext);
+        {
+            NESAppState *appState = (NESAppState*)GetWindowLongPtr(Window, GWLP_USERDATA);
+            wglDeleteContext(appState->oglContext);
             ImGui_ImplOpenGL3_Shutdown();
             ImGui::DestroyContext();
             ImGui_ImplWin32_Shutdown();
 
+            appState->nesCode.shutdown(&appState->nesCtx);
+
             PostQuitMessage(0);
+        }
         break;
 
         case WM_KEYUP:
         case WM_KEYDOWN:
         {
+            NESAppState *appState = (NESAppState*)GetWindowLongPtr(Window, GWLP_USERDATA);
             bool8 pressed = Message == WM_KEYDOWN;
             switch(WParam)
             {
                 case 'Z':
-                    gNesCtx.nes.gamepad[0].buttons.a = pressed;
+                    appState->nesCtx.nes.gamepad[0].buttons.a = pressed;
                 break;
                 case 'X':
-                    gNesCtx.nes.gamepad[0].buttons.b = pressed;
+                    appState->nesCtx.nes.gamepad[0].buttons.b = pressed;
                 break;
                 case 'A':
-                    gNesCtx.nes.gamepad[0].buttons.select = pressed;
+                    appState->nesCtx.nes.gamepad[0].buttons.select = pressed;
                 break;
                 case 'S':
-                    gNesCtx.nes.gamepad[0].buttons.start = pressed;
+                    appState->nesCtx.nes.gamepad[0].buttons.start = pressed;
                 break;
                 case VK_LEFT:
-                    gNesCtx.nes.gamepad[0].buttons.left = pressed;
+                    appState->nesCtx.nes.gamepad[0].buttons.left = pressed;
                 break;
                 case VK_UP:
-                    gNesCtx.nes.gamepad[0].buttons.up = pressed;
+                    appState->nesCtx.nes.gamepad[0].buttons.up = pressed;
                 break;
                 case VK_RIGHT:
-                    gNesCtx.nes.gamepad[0].buttons.right = pressed;
+                    appState->nesCtx.nes.gamepad[0].buttons.right = pressed;
                 break;
                 case VK_DOWN:
-                    gNesCtx.nes.gamepad[0].buttons.down = pressed;
+                    appState->nesCtx.nes.gamepad[0].buttons.down = pressed;
                 break;
             }
         }            
@@ -480,10 +492,11 @@ WindowProc(HWND   Window,
 
         case WM_PAINT:
         {
+            NESAppState *appState = (NESAppState*)GetWindowLongPtr(Window, GWLP_USERDATA);
             HDC dc = GetDC(Window);
-            wglMakeCurrent(dc, gOglContext);
+            wglMakeCurrent(dc, appState->oglContext);
 
-            gNesCode.update(&gNesCtx);
+            appState->nesCode.update(&appState->nesCtx);
             // u32 color = 0xff00ff00;
             // for( u32 i = 0; i < NES_FRAMEBUFFER_WIDTH * NES_FRAMEBUFFER_HEIGHT; ++i )
             // {
@@ -499,14 +512,14 @@ WindowProc(HWND   Window,
             // }
 
             // render the nes framebuffer
-            Win32_RenderOGL( &gNesCtx );    
+            Win32_RenderOGL( &appState->nesCtx );    
 
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplWin32_NewFrame();            
             ImGui::NewFrame();    
 
             // render the NES State
-            if( Win32_RenderImGui( &gNesCode, &gNesCtx ) )
+            if( Win32_RenderImGui( &appState->nesCode, &appState->nesCtx, appState->currentROM ) )
             {
                 PostQuitMessage(0);
             }
@@ -531,12 +544,13 @@ WinMain(HINSTANCE hInstance,
         LPSTR     lpCmdLine,
         int       nShowCmd)
 {
-    gNesCtx = {};
+    NESAppState appState;
+    appState.nesCtx = {};    
     // TODO(pgm) For now starts with debugger enabled
-    gNesCtx.showDebugger = true;
+    appState.nesCtx.showDebugger = true;
     // gNesCtx.showPatternTables = true;
 
-    gCurrentROM[0] = 0;
+    appState.currentROM[0] = 0;
 
     WNDCLASS wc = {};    
     wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
@@ -568,17 +582,17 @@ WinMain(HINSTANCE hInstance,
             NULL,
             NULL,
             hInstance,
-            NULL
+            &appState
         );
 
-        gNesCode = LoadNesCode("NES.dll");        
+        appState.nesCode = LoadNesCode("NES.dll");
 
         for(;;)
         {
             #if HOT_RELOAD
-                if( AttemptHotReload("NES.dll", &gNesCode) && gCurrentROM[0] != NULL )
+                if( AttemptHotReload("NES.dll", &appState.nesCode) && appState.currentROM[0] != NULL )
                 {
-                    // gNesCode.initialize(&gNesCtx, gCurrentROM);
+                    appState.nesCode.initialize(&appState.nesCtx, appState.currentROM);
                 }
             #endif
 
@@ -599,8 +613,7 @@ WinMain(HINSTANCE hInstance,
     {
         // Alert of failure
         MessageBoxA(NULL, "Couldn't register the window class...", "Fatal error", 0);
-    }
-    
+    }   
 
     return(0);
 }
