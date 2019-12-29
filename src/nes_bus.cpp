@@ -26,13 +26,24 @@ MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
             return ReadPPU(nes, addr);
         }
     } 
-    else if( addr >= 0x4000 && addr <= 0x4015 ) 
+    else if( addr >= 0x4000 && addr <= 0x4013 ) 
     { 
         // APU I/O Space
 
         //TODO(pgm) for now return 0        
         return 0;
     } 
+    else if( addr == 0x4014 )
+    {
+        if( set )
+        {
+            nes->dmaPage = v;
+            nes->dmaAddr = 0x0;
+            nes->enableDMA = true;
+        }
+
+        return 0;
+    }
     else if( addr >= 0x4016 && addr <= 0x4017 )
     {
         // gamepads

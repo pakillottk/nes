@@ -84,10 +84,13 @@ NES_INIT(NES_Init)
     
     RUN_MODE prevRunMode = context->runMode;
     context->runMode = kPause;
+    context->nes = {};
     if( LoadROM(romPath, &context->nes.cartridge) )
     {
+        context->nes.dmaSyncFlag = true;
+
         InitializeCPU(&context->nes.cpu, &context->nes); 
-        InitializePPU(&context->nes.ppu);        
+        InitializePPU(&context->nes.ppu);     
     }
     context->runMode = prevRunMode;
 }
@@ -111,8 +114,42 @@ NES_UPDATE(NES_Update)
             // the ppu is approx 3 times faster
             for( u32 i = 0; i < 3; ++i )
             {
-                UpdateCPU(&context->nes.cpu, context);
-                context->totalCycles += context->deltaCycles;
+                if( !context->nes.enableDMA )
+                {
+                    // Regular cpu update
+                    UpdateCPU(&context->nes.cpu, context);
+                    context->totalCycles += context->deltaCycles;
+                }
+                else
+                {
+                    // Perform DMA
+                    if( context->nes.dmaSyncFlag )
+                    {
+                        if( i % 2 == 1 )
+                        {
+                            context->nes.dmaSyncFlag = false;
+                        }
+                    }
+                    else
+                    {
+                        if( i % 2 == 0 )
+                        {
+                            context->nes.dmaData = RB(&context->nes, context->nes.dmaPage << 8 | context->nes.dmaAddr);
+                        }
+                        else
+                        {
+                            ((byte*)context->nes.ppu.OAM)[context->nes.dmaAddr] = context->nes.dmaData;
+                            ++context->nes.dmaAddr;
+                            
+                            if( context->nes.dmaAddr == 0x0 )
+                            {
+                                // dma transfer ended, we have wrapped around
+                                context->nes.enableDMA = false;
+                                context->nes.dmaSyncFlag = true;
+                            }
+                        }
+                    }
+                }
             }
         } while( !context->nes.ppu.frameRendered );        
         

@@ -4,6 +4,10 @@
 #define global_variable static
 
 #define RGB(R, G, B)  u32(0xff000000) | (B&0xff) << 16 | (G&0xFF) << 8  | (R&0xFF)
+#define FLIP_BYTE(BYTE) BYTE = (BYTE & 0xF0) >> 4 | (BYTE & 0x0F) << 4;\
+                        BYTE = (BYTE & 0xCC) >> 2 | (BYTE & 0x33) << 2;\
+                        BYTE = (BYTE & 0xAA) >> 1 | (BYTE & 0x55) <<1;
+
 
 global_variable const u32 nes_palette[] = 
 {    
@@ -265,7 +269,7 @@ ReadPPU(NES *nes, u16 addr)
         break;
 
         case 4: // OAM Data            
-            // TODO
+            data = ((byte*)nes->ppu.OAM)[nes->ppu.oam_addr];
         break;
 
         case 5: // scroll can't be readed            
@@ -312,9 +316,11 @@ WritePPU(NES *nes, u16 addr, byte v)
         break;
 
         case 3: // OAM Addr
+            nes->ppu.oam_addr = v;
         break;
 
         case 4: // OAM Data
+            ((byte*)nes->ppu.OAM)[nes->ppu.oam_addr] = v;
         break;
 
         case 5: // scroll
@@ -451,6 +457,24 @@ UpdateBits(PPU_2C02 *ppu)
         ppu->bgAttribLo <<= 1;
         ppu->bgAttribHi <<= 1;
     }
+
+    if( ppu->ppumask.showSprites && ppu->cycle >= 1 && ppu->cycle < 258 )
+    {
+        for( u32 i = 0; i < ppu->candidateCount; ++i )
+        {
+            if( ppu->candidateSprites[i].x > 0 )
+            {
+                // it will be zero when we reach the pixel where this sprite is visible
+                --ppu->candidateSprites[i].x;
+            }
+            else
+            {
+                // only when its visible
+                ppu->spritePatternLo[i] <<= 1;
+                ppu->spritePatternHi[i] <<= 1;
+            }
+        }
+    }
 }
 
 internal u32
@@ -465,6 +489,8 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
 {
     if( ppu->scanline >= -1 && ppu->scanline <= 240 )
     {
+        //----- Background
+
         if(ppu->scanline == 0 && ppu->cycle == 0)
 		{
 			// cycle skip
@@ -475,6 +501,11 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
 		{
 			// Start of new frame
 			ppu->ppustatus.vblank = 0;
+
+            ppu->ppustatus.overflow = 0;
+
+            memset(ppu->spritePatternLo, 0, sizeof(u16) * 8);
+            memset(ppu->spritePatternHi, 0, sizeof(u16) * 8);
 		}
 
         if( (ppu->cycle >= 2 && ppu->cycle < 258) || (ppu->cycle >= 321 && ppu->cycle < 338) )
@@ -533,15 +564,135 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
             TransferX(ppu);
         }
 
-        if( ppu->cycle == 338 || ppu->cycle == 340 )
-		{
-			ppu->bgTileId = ReadVRAM(&context->nes, 0x2000 | (ppu->vram_addr.data & 0x0FFF));
-		}
-
         if( ppu->scanline == -1 && ppu->cycle >= 280 && ppu->cycle < 305 )
         {
             TransferY(ppu);
         }
+
+        if( ppu->cycle == 338 || ppu->cycle == 340 )
+		{
+			ppu->bgTileId = ReadVRAM(&context->nes, 0x2000 | (ppu->vram_addr.data & 0x0FFF));
+		}
+        //-----------------
+
+        //----- Foreground
+
+        /*
+            NOTE(pgm)            
+            This doesn't follow the timing of the original hardware. Instead its based on the implementation
+            made by javidx9(OneLoneCoder).
+            
+            https://github.com/OneLoneCoder/olcNES
+        */
+
+        if( ppu->cycle == 257 && ppu->scanline >= 0 )
+        {
+            // clear to 0xff so that they'll be always out of bounds
+            memset(ppu->candidateSprites, 0xff, 8 * sizeof(PPU_2C02::ObjectData));
+            ppu->candidateCount = 0;
+
+            byte objectIdx = 0;
+            while( objectIdx < 64 && ppu->candidateCount < 9 )
+            {
+                i16 yDiff = i16(ppu->scanline) - i16(ppu->OAM[objectIdx].y);
+                if( yDiff >= 0 && yDiff < (ppu->ppuctrl.spriteSize ? 16 : 8) )
+                {
+                    if( ppu->candidateCount < 8 )
+                    {
+                        ppu->candidateSprites[ppu->candidateCount] = ppu->OAM[objectIdx];
+                        ++ppu->candidateCount;
+                    }
+                }
+                ++objectIdx;
+            }
+            ppu->ppustatus.overflow = ppu->candidateCount > 8;
+        }
+
+        if( ppu->cycle == 340 )
+        {
+            for( byte i = 0; i < ppu->candidateCount; ++i )
+            {
+                byte bitsLo, bitsHi;
+                u16 addrLo, addrHi;
+
+                if( !ppu->ppuctrl.spriteSize )
+                {
+                    // 8x8
+                    if( !(ppu->candidateSprites[i].attributes & 0x80) )
+                    {
+                        // not flipped vertically
+                        addrLo = (ppu->ppuctrl.spritePattern << 12)  
+                                 | (ppu->candidateSprites[i].id << 4)  
+                                 | (ppu->scanline - ppu->candidateSprites[i].y);
+                        
+                    }
+                    else
+                    {
+                        // flipped
+                        addrLo = (ppu->ppuctrl.spritePattern << 12)  
+                                 | (ppu->candidateSprites[i].id << 4)  
+                                 | (7 - ppu->scanline - ppu->candidateSprites[i].y);
+                    }
+                }
+                else
+                {
+                    // 8x16
+                    if( !(ppu->candidateSprites[i].attributes & 0x80) )
+                    {
+                        // not flipped vertically
+                        if( ppu->scanline - ppu->candidateSprites[i].y < 8 )
+                        {
+                            // top half
+                            addrLo = ((ppu->candidateSprites[i].id & 0x01) << 12) 
+                                     | ((ppu->candidateSprites[i].id & 0xFE) << 4)
+                                     | ((ppu->scanline - ppu->candidateSprites[i].y) & 0x07);
+                        }
+                        else
+                        {
+                            // bottom half
+                            addrLo = ((ppu->candidateSprites[i].id & 0x01) << 12) 
+                                     | (((ppu->candidateSprites[i].id & 0xFE) + 1) << 4)
+                                     | ((ppu->scanline - ppu->candidateSprites[i].y) & 0x07);
+                        }
+                    }
+                    else
+                    {
+                        // flipped
+                        if( ppu->scanline - ppu->candidateSprites[i].y < 8 )
+                        {
+                            // top half
+                            addrLo = ((ppu->candidateSprites[i].id & 0x01) << 12) 
+                                     | ((ppu->candidateSprites[i].id & 0xFE) << 4)
+                                     | ((7 - ppu->scanline - ppu->candidateSprites[i].y) & 0x07);
+                        }
+                        else
+                        {
+                            // bottom half
+                            addrLo = ((ppu->candidateSprites[i].id & 0x01) << 12) 
+                                     | (((ppu->candidateSprites[i].id & 0xFE) + 1) << 4)
+                                     | ((7 - ppu->scanline - ppu->candidateSprites[i].y) & 0x07);
+                        }
+                    }                    
+                }
+                addrHi = addrLo + 8;
+
+                bitsLo = ReadVRAM(&context->nes, addrLo);
+                bitsHi = ReadVRAM(&context->nes, addrHi);
+
+                if( ppu->candidateSprites[i].attributes & 0x40 )
+                {
+                    // is flipped horizontally
+                    FLIP_BYTE(bitsLo);
+                    FLIP_BYTE(bitsHi);
+                }
+
+                // load into the shifters
+                ppu->spritePatternLo[i] = bitsLo;
+                ppu->spritePatternHi[i] = bitsHi;
+            }
+        }
+
+        //-----------------
     }
 
     if( ppu->scanline == 241 && ppu->cycle == 1 )
@@ -557,6 +708,10 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
     byte bg = 0x0;  
 	byte bgPaletteIdx = 0x0;
 
+    // screen coordinates
+    i32 x = ppu->cycle - 1;
+    i32 y = ppu->scanline;
+
     if( ppu->ppumask.showBg )
     {
         u16 mask = 0x8000 >> ppu->fineX;
@@ -568,17 +723,76 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
 
         byte p0PalIdx = (ppu->bgAttribLo & mask) > 0;
         byte p1PalIdx = (ppu->bgAttribHi & mask) > 0;
-        bgPaletteIdx = (p1PalIdx << 1) | p0PalIdx;        
-
-        i32 x = ppu->cycle - 1;
-        i32 y = ppu->scanline;
-        if( x >= 0 && x < NES_FRAMEBUFFER_WIDTH && 
-            y >= 0 && y < NES_FRAMEBUFFER_HEIGHT )
-        {
-            context->backbuffer[ y * NES_FRAMEBUFFER_WIDTH + x ] = ResolvePaletteColor(&context->nes, bgPaletteIdx, bg);
-        }
+        bgPaletteIdx = (p1PalIdx << 1) | p0PalIdx;          
     }
     
+    byte fg = 0;
+    byte fgPaletteIdx = 0;
+    byte fgPriority = 0;
+
+    if( ppu->ppumask.showSprites )
+    {
+        for( u32 i = 0; i < ppu->candidateCount; ++i )
+        {
+            if( ppu->candidateSprites[i].x == 0 )
+            {
+                // is a visible sprite
+                u8 fgLo = (ppu->spritePatternLo[i] & 0x80) > 0;
+                u8 fgHi = (ppu->spritePatternHi[i] & 0x80) > 0;
+                fg = (fgHi << 1) | fgLo;
+
+                fgPaletteIdx = (ppu->candidateSprites[i].attributes & 0x03) + 0x04;
+                fgPriority = (ppu->candidateSprites[i].attributes & 0x20) == 0;
+
+                if( fg != 0 )
+                {
+                    // otherwise, not visible. Its transparent
+                    break; // because it's the most prioritary visible sprite
+                }
+            }
+        }
+    }
+
+    byte pixel = 0;
+    byte paletteIdx = 0;
+    if( bg == 0 && fg == 0 )
+    {
+        // nothing in here. It's all zero out
+        pixel = 0;
+        paletteIdx = 0;
+    }
+    else if( bg == 0 && fg > 0 )
+    {
+        // we only care about foreground
+        pixel = fg;
+        paletteIdx = fgPaletteIdx;
+    }
+    else if( bg > 0 && fg == 0 )
+    {
+        // we only care about background
+        pixel = bg;
+        paletteIdx = bgPaletteIdx;
+    }
+    else
+    {
+        // both are visible, decide with priority
+        if( fgPriority )
+        {
+            pixel = fg;
+            paletteIdx = fgPaletteIdx;
+        }
+        else
+        {
+            pixel = bg;
+            paletteIdx = bgPaletteIdx;
+        }
+    }
+
+    if( x >= 0 && x < NES_FRAMEBUFFER_WIDTH && 
+        y >= 0 && y < NES_FRAMEBUFFER_HEIGHT )
+    {
+        context->backbuffer[ y * NES_FRAMEBUFFER_WIDTH + x ] = ResolvePaletteColor(&context->nes, paletteIdx, pixel);
+    }
 
     ++ppu->cycle;
     if( ppu->cycle >= 341 )

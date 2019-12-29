@@ -161,6 +161,22 @@ struct PPU_2C02
     loopy vram_addr;
     loopy tram_addr;
 
+    // srpites
+    struct ObjectData
+    {
+        byte y;
+        byte id;
+        byte attributes;
+        byte x;
+    } OAM[64];
+    byte oam_addr;
+    // 1 to 8 sprites could be visible per scanline
+    ObjectData candidateSprites[8];
+    // How many sprites have been found for the scanline
+    byte candidateCount;
+    u16 spritePatternLo[8];
+	u16 spritePatternHi[8];
+
     // rendering
     byte bgTileId;
 	byte bgTileAttrib;
@@ -243,6 +259,13 @@ struct NES
     APU_RP2A apu;
     NESGamepad gamepad[2];   
     byte gamepadShifter[2]; 
+
+    // DMA for fast PPU OAM memory writting
+    bool8 enableDMA;
+    bool8 dmaSyncFlag;
+    byte dmaPage;
+    byte dmaAddr;
+    byte dmaData;
 };
 
 const u32 NES_FRAMEBUFFER_WIDTH = 256;
