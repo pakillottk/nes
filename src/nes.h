@@ -45,6 +45,8 @@ enum P_flags
 
 struct CPU_6502
 {
+    u32 pendingCycles;
+
     u16 PC;
     union 
     {

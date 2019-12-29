@@ -25,63 +25,95 @@ CalcOperand(NESContext *context, NES* nes, ADDR_MODE mode)
     u16 truncNextC = pgmbin::combineLittleEndian(truncNextT,s);
     u16 output, tmp;
     switch( mode ) {
+        case IMPL:
         case ACCUMULATOR:
+        {
             output = regs[REG_A];
+        }
+        break;
+        
         case REL:
-        case IMMEDIATE: {
+        case IMMEDIATE: 
+        {
             output = t;
-            break;
         }
-        case IND: {
-            output = pgmbin::combineLittleEndian( RB(nes, c), RB(nes, truncNextC));
-            break;
+        break;
+
+        case IND: 
+        {
+            u16 ptr = c;            
+            if( t == 0x00FF )
+            {                
+                output = pgmbin::combineLittleEndian( RB(nes, ptr), RB(nes, ptr & 0xFF00) );
+            }
+            else
+            {
+                output = pgmbin::combineLittleEndian( RB(nes, ptr), RB(nes, ptr + 1) );
+            }
         }
-        case ABS: {
+        break;
+
+        case ABS: 
+        {
             output = c;
-            break;
         }
-        case ABS_X: {
+        break;
+
+        case ABS_X: 
+        {
             output = c + regs[REG_X];
             if( c >> 8 != output >> 8 ) {
                 cycles++;
             }
-            break;
         }
-        case ABS_Y: {
+        break;
+
+        case ABS_Y: 
+        {
             output = c + regs[REG_Y];
             if( c >> 8 != output >> 8 ) {
                 cycles++;
             }
-            break;
         }
-        case ZPG: {
+        break;
+
+        case ZPG: 
+        {
             output = 0x00FF & t;
-            break;
         }        
-        case ZPG_X:{
+        break;
+
+        case ZPG_X:
+        {
             output = 0x00FF & ( t + regs[REG_X] );
-            break;
         }
-        case ZPG_Y:{
+        break;
+
+        case ZPG_Y:
+        {
             output = 0x00FF & ( t + regs[REG_Y] );
-            break;
         }
-        case X_IND: {
+        break;
+
+        case X_IND: 
+        {
             output = pgmbin::combineLittleEndian(RB(nes, t+regs[REG_X]&0xFF),RB(nes, (t+regs[REG_X]+1)&0xFF));
-            break;
         }
-        case IND_Y: {  
+        break;
+
+        case IND_Y: 
+        {  
             tmp = pgmbin::combineLittleEndian(RB(nes, t&0xFF), RB(nes, (t + 1)&0xFF));
             output =  tmp + regs[REG_Y];
             if( tmp >> 8 != output >> 8 ) {
                 cycles++;
             }
-            break;
         }
-        case IMPL: {
-            output = RB(nes, PC);
-            break;
-        }        
+        break;
+        // case IMPL: {
+        //     output = RB(nes, PC);
+        //     break;
+        //}        
     }
     
     return output;
@@ -115,8 +147,13 @@ Pull( NES *nes )
     byte tmp8b; u16 addr, tmp16; ADDR_MODE mode;
 
 //Sets the PC using ins operand as offset
-#define OFFSET_PC() signedtmp = operand&0xFF; if( pgmbin::getBitAt<8>(operand) ){ signedtmp = (~operand)&0xFF; signedtmp = -signedtmp; }\
-                    tmp16 = PC + signedtmp + (signedtmp > 0 ? 2:1); cycles += (tmp16>>8) == (PC>>8) ? 1:2; PC = tmp16; keep_pc = true;
+// #define OFFSET_PC() signedtmp = operand&0xFF; if( pgmbin::getBitAt<8>(operand) ){ signedtmp = (~operand)&0xFF; signedtmp = -signedtmp; }\
+//                     tmp16 = PC + signedtmp + (signedtmp > 0 ? 2:1); cycles += (tmp16>>8) == (PC>>8) ? 1:2; PC = tmp16; keep_pc = true;
+
+#define OFFSET_PC() ++cycles;\
+    if( operand & 0x80 ) operand |= 0xFF00;\
+    if( (PC + operand) & 0xFF00 != (PC & 0xFF00) )++cycles;\
+    PC = PC + operand;
 
 //Sets PC to ins operand
 #define SET_PC() PC = operand; keep_pc = true;
@@ -198,7 +235,7 @@ Pull( NES *nes )
 #define BRK() if( pgmbin::getBitAt<I_flag>(P) ){ P = pgmbin::setBitAt<B_flag>(1, P); STACK_PUSH16((PC-1)) STACK_PUSH(P) P = pgmbin::setBitAt<I_flag>(0, P); \
               PC = pgmbin::combineLittleEndian( RB(&context->nes, 0xFFFE), RB(&context->nes, 0xFFFF)); keep_pc = true; }
 //Recovers from interruption
-#define RTI() STACK_PULL(P) RESTORE_PC() keep_pc = true; context->nes.cpu.nmi_now = false;
+#define RTI() STACK_PULL(P) RESTORE_PC() keep_pc = true; context->nes.cpu.nmi_processing = false;
 
 internal Instruction
 Evaluate(byte opcode, NESContext *context)
@@ -486,14 +523,22 @@ InitializeCPU(CPU_6502 *cpu, NES *nes)
 void 
 UpdateCPU(CPU_6502 *cpu, NESContext *context)
 {
+    if( cpu->pendingCycles > 0 )
+    {
+        --cpu->pendingCycles;
+        return;
+    }
+
     byte opcode = RB(&context->nes, cpu->PC);
     context->deltaCycles = 0;
-    if( !cpu->nmi_now ) 
+    //if( !cpu->nmi_now ) 
+    // {
+        // cpu->nmi_processing = false;        
+    // } 
+    // else if( !cpu->nmi_processing ) 
+    if( cpu->nmi_now ) 
     {
-        cpu->nmi_processing = false;        
-    } 
-    else if( !cpu->nmi_processing && cpu->P.I ) 
-    {
+        cpu->nmi_now = false;
         cpu->nmi_processing = true;
         u16 pc = cpu->PC;
         STACK_PUSH16( pc );
@@ -518,4 +563,5 @@ UpdateCPU(CPU_6502 *cpu, NESContext *context)
 
     context->deltaCycles += decoded.cycles;
     context->totalCycles += context->deltaCycles;
+    cpu->pendingCycles = decoded.cycles;
 }

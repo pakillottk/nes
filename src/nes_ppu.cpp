@@ -3,7 +3,7 @@
 #define internal static
 #define global_variable static
 
-#define RGB(R, G, B)  u32(0xff000000) | (R&0xff) << 16 | (G&0xFF) << 8  | (B&0xFF)
+#define RGB(R, G, B)  u32(0xff000000) | (B&0xff) << 16 | (G&0xFF) << 8  | (R&0xFF)
 
 global_variable const u32 nes_palette[] = 
 {    
