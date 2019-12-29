@@ -278,6 +278,9 @@ typedef NES_INIT(nes_init);
 #define NES_UPDATE(name) void name(NESContext *context)
 typedef NES_UPDATE(nes_update);
 
+#define NES_SHUTDOWN(name) void name(NESContext *context)
+typedef NES_SHUTDOWN(nes_shutdown);
+
 #ifdef NES_IMPLEMENTATION
     #ifdef _WIN32
         #define EXPORT _declspec(dllexport)
@@ -292,6 +295,7 @@ typedef NES_UPDATE(nes_update);
 
         EXPORT NES_INIT(NES_Init);
         EXPORT NES_UPDATE(NES_Update);
+        EXPORT NES_SHUTDOWN(NES_Shutdown);
 
     #ifdef __cplusplus
     }

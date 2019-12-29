@@ -57,6 +57,10 @@ MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
         // u16 mapAddr = addr % ROM_PAGESIZE;
         return nes->cartridge.ROM[mapAddr];
     }
+    else
+    {
+        return(0);
+    }
     if( set ) 
     {
         assert(!inCart);

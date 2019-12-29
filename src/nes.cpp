@@ -99,7 +99,7 @@ NES_UPDATE(NES_Update)
         // generate a new frame
         context->nes.ppu.frameRendered = false;
         context->totalCycles = 0;
-        // do
+        do
         {
             UpdatePPU(&context->nes.ppu, context);
 
@@ -109,16 +109,26 @@ NES_UPDATE(NES_Update)
                 context->nes.cpu.nmi_now = true;
             }
             // the ppu is approx 3 times faster
-            // for( u32 i = 0; i < 3; ++i )
+            for( u32 i = 0; i < 3; ++i )
             {
                 UpdateCPU(&context->nes.cpu, context);
                 context->totalCycles += context->deltaCycles;
             }
-        } // while( !context->nes.ppu.frameRendered );        
+        } while( !context->nes.ppu.frameRendered );        
         
         if( context->runMode == kStep ) 
         {
             context->runMode = kPause;
         }
+    }
+}
+
+NES_SHUTDOWN(NES_Shutdown)
+{
+    context->runMode = kPause;
+    if( context->nes.cartridge.loaded )
+    {
+        delete[] context->nes.cartridge.ROM;
+        delete[] context->nes.cartridge.VROM;
     }
 }

@@ -32,6 +32,8 @@ NES_INIT(nesInitStub)
 {}
 NES_UPDATE(nesUpdateStub)
 {}
+NES_SHUTDOWN(nesShutdownStub)
+{}
 
 internal FILETIME Win32_GetLastWriteTime(const char *filename)
 {
@@ -67,14 +69,16 @@ NesCode LoadNesCode(const char *targetFilename)
     if( nesCode.dllHandle )
     {
         nesCode.initialize = (nes_init*)GetProcAddress(nesCode.dllHandle, "NES_Init");
-        nesCode.update = (nes_update*)GetProcAddress(nesCode.dllHandle, "NES_Update");        
-        nesCode.isValid = nesCode.initialize != NULL && nesCode.update != NULL;
+        nesCode.update = (nes_update*)GetProcAddress(nesCode.dllHandle, "NES_Update");  
+        nesCode.shutdown = (nes_update*)GetProcAddress(nesCode.dllHandle, "NES_Shutdown");        
+        nesCode.isValid = nesCode.initialize != NULL && nesCode.update != NULL && nesCode.shutdown != NULL;
     }
 
     if( !nesCode.isValid )
     {
-        nesCode.initialize = nesInitStub;
-        nesCode.update  = nesUpdateStub;        
+        nesCode.initialize  = nesInitStub;
+        nesCode.update      = nesUpdateStub;
+        nesCode.shutdown    = nesShutdownStub;
     }
 
     return nesCode;
@@ -87,7 +91,8 @@ UnloadNesCode(NesCode *nesCode)
     {
         nesCode->isValid = 0;
         nesCode->initialize = nesInitStub;
-        nesCode->update  = nesUpdateStub;        
+        nesCode->update  = nesUpdateStub;   
+        nesCode->shutdown = nesShutdownStub;     
         FreeLibrary( nesCode->dllHandle );
     }
 }
@@ -335,10 +340,9 @@ Win32_RenderOGL(NESContext *nesContext)
 
     glEnable(GL_TEXTURE_2D);
     SwapNesBackbuffer(nesContext);
-    // Win32_MakeNameTableTexture(nesContext, 0);
 
     glPushMatrix();
-
+    
     glScalef(1.0f, -1.0f, 1.0f);
 
     glColor3f(1.0f, 1.0f, 1.0f);
@@ -574,7 +578,7 @@ WinMain(HINSTANCE hInstance,
             #if HOT_RELOAD
                 if( AttemptHotReload("NES.dll", &gNesCode) && gCurrentROM[0] != NULL )
                 {
-                    gNesCode.initialize(&gNesCtx, gCurrentROM);
+                    // gNesCode.initialize(&gNesCtx, gCurrentROM);
                 }
             #endif
 

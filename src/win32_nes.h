@@ -12,7 +12,8 @@ struct NesCode
     HMODULE dllHandle;
     FILETIME lastWriteTime;
     nes_init *initialize;
-    nes_update *update;    
+    nes_update *update;   
+    nes_shutdown *shutdown; 
 };
 
 #endif // WIN32_NES_H

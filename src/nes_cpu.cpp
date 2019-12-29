@@ -198,7 +198,7 @@ Pull( NES *nes )
 #define BRK() if( pgmbin::getBitAt<I_flag>(P) ){ P = pgmbin::setBitAt<B_flag>(1, P); STACK_PUSH16((PC-1)) STACK_PUSH(P) P = pgmbin::setBitAt<I_flag>(0, P); \
               PC = pgmbin::combineLittleEndian( RB(&context->nes, 0xFFFE), RB(&context->nes, 0xFFFF)); keep_pc = true; }
 //Recovers from interruption
-#define RTI() STACK_PULL(P) RESTORE_PC() keep_pc = true; context->nes.cpu.nmi_processing = false;
+#define RTI() STACK_PULL(P) RESTORE_PC() keep_pc = true; context->nes.cpu.nmi_now = false;
 
 internal Instruction
 Evaluate(byte opcode, NESContext *context)
@@ -436,6 +436,18 @@ Evaluate(byte opcode, NESContext *context)
         OP( 0xdc,     "*NOP abs,x",       1,         ABS_X,{})
         OP( 0xfc,     "*NOP abs,x",       1,         ABS_X,{})
         OP( 0x80,         "*NOP #",       1,         IMMEDIATE,{})
+        OP( 0xa3,     "*LAX ind,x",       6,         X_IND, READ() SET_REG( REG_A, operand ) regs[REG_X]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_X]))
+        OP( 0xa7,       "*LAX ind",       6,         IND,   READ() SET_REG( REG_A, operand ) regs[REG_X]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_X]))
+        OP( 0xaf,       "*LAX abs",       6,         ABS,   READ() SET_REG( REG_A, operand ) regs[REG_X]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_X]))
+        OP( 0xb3,     "*LAX ind,y",       6,         IND_Y, READ() SET_REG( REG_A, operand ) regs[REG_X]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_X]))
+        OP( 0xb7,     "*LAX zpg,y",       6,         ZPG_Y, READ() SET_REG( REG_A, operand ) regs[REG_X]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_X]))
+        OP( 0xbf,     "*LAX abs,y",       6,         ABS_Y, READ() SET_REG( REG_A, operand ) regs[REG_X]=regs[REG_A]; UPDATE_NZFLAGS(regs[REG_X]))
+        OP( 0x83,     "*SAX ind,x",       4,         IND_Y,                                             STORE(operand, (regs[REG_A]&regs[REG_X])))
+        OP( 0x87,       "*SAX zpg",       4,         ZPG,                                               STORE(operand, (regs[REG_A]&regs[REG_X])))
+        OP( 0x8f,       "*SAX abs",       4,         ABS,                                               STORE(operand, (regs[REG_A]&regs[REG_X])))
+        OP( 0x97,     "*SAX zpg,y",       4,         ZPG_Y,                                             STORE(operand, (regs[REG_A]&regs[REG_X])))
+        OP( 0xeb,         "*SBC #",       2,         IMMEDIATE,                                                                             SBC())
+        // NOP
         case 0x1a:
         case 0x3a:
         case 0x5a:
@@ -466,8 +478,8 @@ InitializeCPU(CPU_6502 *cpu, NES *nes)
     cpu->nmi_now = cpu->nmi_processing = false;
     cpu->SP = 0xFD;
     cpu->P.flags = 0x24;
-    cpu->PC=0xC000;
-    // cpu->PC = COMBINE( RB(nes, 0xFFFD), RB(nes, 0xFFFC) );
+    // cpu->PC=0xC000;
+    cpu->PC = COMBINE( RB(nes, 0xFFFD), RB(nes, 0xFFFC) );
     // cpu->PC = pgmbin::combineLittleEndian( *RB(nes, 0xFFFC), *RB(nes, 0xFFFD) );
 }
 
@@ -480,7 +492,7 @@ UpdateCPU(CPU_6502 *cpu, NESContext *context)
     {
         cpu->nmi_processing = false;        
     } 
-    else if( !cpu->nmi_processing ) 
+    else if( !cpu->nmi_processing && cpu->P.I ) 
     {
         cpu->nmi_processing = true;
         u16 pc = cpu->PC;
