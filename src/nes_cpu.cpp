@@ -31,7 +31,7 @@ CalcOperand(NESContext *context, NES* nes, ADDR_MODE mode)
             output = regs[REG_A];
         }
         break;
-        
+
         case REL:
         case IMMEDIATE: 
         {

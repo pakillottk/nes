@@ -184,14 +184,14 @@ struct NESGamepad
         byte state;
         struct
         {
-            byte up : 1;
+            byte right : 1;
             byte left : 1;
             byte down : 1;
-            byte right : 1;
+            byte up : 1;
             byte start : 1;
             byte select : 1;
-            byte a : 1;
             byte b : 1;
+            byte a : 1;
         };
     } buttons;    
 };
