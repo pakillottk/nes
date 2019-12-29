@@ -385,8 +385,8 @@ Win32_RenderImGui(NesCode *nesCode, NESContext *nesContext, char *currentROM)
             {
                 nesCode->initialize(nesContext, path);
                 strcpy(currentROM, path);
-                Win32_MakePatternTableTexture(nesContext, &nesContext->nes.cartridge, 0);
-                Win32_MakePatternTableTexture(nesContext, &nesContext->nes.cartridge, 1);
+                // Win32_MakePatternTableTexture(nesContext, &nesContext->nes.cartridge, 0);
+                // Win32_MakePatternTableTexture(nesContext, &nesContext->nes.cartridge, 1);
             }
         }            
         break;

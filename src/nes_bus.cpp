@@ -1,5 +1,6 @@
 #include "nes_bus.h"
 #include "nes_ppu.h"
+#include "nes_mappers.h"
 #include <assert.h>
 
 #define internal static
@@ -62,11 +63,14 @@ MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
     { 
         // Cartridge space   
         inCart = true;
-
-        //TODO(pgm) RAM
-        u16 mapAddr = addr & (nes->cartridge.pages > 1 ? 0x7FFF : 0x3FFF);            
-        // u16 mapAddr = addr % ROM_PAGESIZE;
-        return nes->cartridge.ROM[mapAddr];
+        if(set)
+        {
+            return WriteMapper(&nes->cartridge, addr, v);
+        }
+        else
+        {
+            return ReadMapper(&nes->cartridge, addr);
+        }
     }
     else
     {

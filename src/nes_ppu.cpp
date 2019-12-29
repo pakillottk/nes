@@ -1,4 +1,5 @@
 #include "nes_ppu.h"
+#include "nes_mappers.h"
 #include <string.h>
 
 #define internal static
@@ -87,10 +88,8 @@ ReadVRAM(NES *nes, u16 addr)
     u16 mappedAddr = addr;
     byte data = 0;
     if( addr >= 0x0000 && addr <= 0x1FFF )
-    {
-        // this is because of mapper0. Else we have to map the right vram bank
-        mappedAddr = mappedAddr % VROM_PAGESIZE;
-        data = nes->cartridge.VROM[mappedAddr];
+    {        
+        data = ReadVMapper(&nes->cartridge, addr);
     }
     else if( addr >= 0x2000 && addr <= 0x3EFF )
     {
@@ -166,9 +165,7 @@ WriteVRAM(NES *nes, u16 addr, byte data)
     u16 mappedAddr = addr;
     if( addr >= 0x0000 && addr <= 0x1FFF )
     {        
-        // doesn't make much sense...
-        nes->cartridge.VROM[addr % VROM_PAGESIZE] = data;
-        // nes->ppu.patternTable[(addr & 0x1000) >> 12][addr & 0x0FFF] = data;
+        WriteVMapper(&nes->cartridge, addr, data);
     }
     else if( addr >= 0x2000 && addr <= 0x3EFF )
     {
@@ -669,15 +666,15 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
                         {
                             // top half
                             addrLo = ((ppu->candidateSprites[i].id & 0x01) << 12) 
-                                     | ((ppu->candidateSprites[i].id & 0xFE) << 4)
-                                     | ((7 - ppu->scanline - ppu->candidateSprites[i].y) & 0x07);
+                                     | (((ppu->candidateSprites[i].id & 0xFE) + 1) << 4)
+                                     | (7- (ppu->scanline - ppu->candidateSprites[i].y) & 0x07);
                         }
                         else
                         {
                             // bottom half
                             addrLo = ((ppu->candidateSprites[i].id & 0x01) << 12) 
-                                     | (((ppu->candidateSprites[i].id & 0xFE) + 1) << 4)
-                                     | ((7 - ppu->scanline - ppu->candidateSprites[i].y) & 0x07);
+                                     | ((ppu->candidateSprites[i].id & 0xFE) << 4)
+                                     | (7 - (ppu->scanline - ppu->candidateSprites[i].y) & 0x07);
                         }
                     }                    
                 }
@@ -787,7 +784,7 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
         pixel = bg;
         paletteIdx = bgPaletteIdx;
     }
-    else
+    else if( bg > 0 && fg > 0 )
     {
         // both are visible, decide with priority
         if( fgPriority )
@@ -803,7 +800,7 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
 
         if( ppu->canHaveZeroHit && ppu->spriteZeroRendering )
         {
-            if( ppu->ppumask.showBg & ppu->ppumask.showSprites )
+            if( ppu->ppumask.showBg && ppu->ppumask.showSprites )
             {
                 if( ~(ppu->ppumask.showLeftBg | ppu->ppumask.showLeftSprites) )
                 {
