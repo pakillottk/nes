@@ -177,6 +177,10 @@ struct PPU_2C02
     u16 spritePatternLo[8];
 	u16 spritePatternHi[8];
 
+    // 0 hit check
+    bool8 canHaveZeroHit;
+    bool8 spriteZeroRendering;
+
     // rendering
     byte bgTileId;
 	byte bgTileAttrib;

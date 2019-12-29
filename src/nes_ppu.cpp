@@ -1,4 +1,5 @@
 #include "nes_ppu.h"
+#include <string.h>
 
 #define internal static
 #define global_variable static
@@ -501,7 +502,7 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
 		{
 			// Start of new frame
 			ppu->ppustatus.vblank = 0;
-
+            ppu->ppustatus.ZeroHit = false;
             ppu->ppustatus.overflow = 0;
 
             memset(ppu->spritePatternLo, 0, sizeof(u16) * 8);
@@ -592,6 +593,7 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
             ppu->candidateCount = 0;
 
             byte objectIdx = 0;
+            ppu->canHaveZeroHit = false;
             while( objectIdx < 64 && ppu->candidateCount < 9 )
             {
                 i16 yDiff = i16(ppu->scanline) - i16(ppu->OAM[objectIdx].y);
@@ -599,6 +601,11 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
                 {
                     if( ppu->candidateCount < 8 )
                     {
+                        if( objectIdx == 0 )
+                        {
+                            ppu->canHaveZeroHit = true;
+                        }
+
                         ppu->candidateSprites[ppu->candidateCount] = ppu->OAM[objectIdx];
                         ++ppu->candidateCount;
                     }
@@ -732,6 +739,8 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
 
     if( ppu->ppumask.showSprites )
     {
+        ppu->spriteZeroRendering = false;
+
         for( u32 i = 0; i < ppu->candidateCount; ++i )
         {
             if( ppu->candidateSprites[i].x == 0 )
@@ -746,6 +755,11 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
 
                 if( fg != 0 )
                 {
+                    if( i == 0 )
+                    {
+                        ppu->spriteZeroRendering = true;
+                    }
+
                     // otherwise, not visible. Its transparent
                     break; // because it's the most prioritary visible sprite
                 }
@@ -785,6 +799,27 @@ UpdatePPU(PPU_2C02 *ppu, NESContext *context)
         {
             pixel = bg;
             paletteIdx = bgPaletteIdx;
+        }
+
+        if( ppu->canHaveZeroHit && ppu->spriteZeroRendering )
+        {
+            if( ppu->ppumask.showBg & ppu->ppumask.showSprites )
+            {
+                if( ~(ppu->ppumask.showLeftBg | ppu->ppumask.showLeftSprites) )
+                {
+                    if( ppu->cycle >= 9 && ppu->cycle < 258 )
+                    {
+                        ppu->ppustatus.ZeroHit = true;
+                    }
+                }
+                else
+                {
+                    if( ppu->cycle >= 1 && ppu->cycle < 258 )
+                    {
+                        ppu->ppustatus.ZeroHit = true;
+                    }
+                }
+            }
         }
     }
 
