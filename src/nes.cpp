@@ -100,6 +100,15 @@ NES_SHUTDOWN(NES_Shutdown)
     if( context->nes.cartridge.loaded )
     {
         delete[] context->nes.cartridge.ROM;
-        delete[] context->nes.cartridge.VROM;
+        delete[] context->nes.cartridge.VROM; 
+
+        if( context->nes.cartridge.usingVRAM )
+        {
+            delete[] context->nes.cartridge.VRAM;
+        }       
+    }
+    if( context->nes.cartridge.mapperData )
+    {
+        delete context->nes.cartridge.mapperData;
     }
 }

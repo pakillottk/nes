@@ -4,13 +4,11 @@
 
 #include "nes_types.h"
 
-static const u32 ROM_PAGESIZE = KB(16);
-static const u32 VROM_PAGESIZE = KB(8);
-
 enum MIRRORING
 {
     kVertical,
     kHorizontal
+    // TODO(pgm) More mirroring modes
 };
 
 struct NESCartridge
@@ -18,10 +16,19 @@ struct NESCartridge
     bool8 loaded;
     MIRRORING mirror;
     u32 mapper;
+    u32 romPageSize;
+    u32 vromPageSize;
+    u32 currentPage;
     u32 pages;
     byte *ROM;
+    byte RAM[KB(8)];
+    u32 currentVPage;
     u32 vpages;
     byte *VROM;
+    bool8 usingVRAM;
+    byte *VRAM;
+    u32 vRamSize;
+    void *mapperData;
 };
 
 enum CPU_REG
