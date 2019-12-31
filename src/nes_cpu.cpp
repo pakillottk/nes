@@ -62,7 +62,9 @@ CalcOperand(NESContext *context, NES* nes, ADDR_MODE mode)
         case ABS_X: 
         {
             output = c + regs[REG_X];
-            if( c >> 8 != output >> 8 ) {
+            // if( c >> 8 != output >> 8 ) 
+            if ((output & 0xFF00) != (s << 8))
+            {
                 cycles++;
             }
         }
@@ -71,7 +73,9 @@ CalcOperand(NESContext *context, NES* nes, ADDR_MODE mode)
         case ABS_Y: 
         {
             output = c + regs[REG_Y];
-            if( c >> 8 != output >> 8 ) {
+            // if( c >> 8 != output >> 8 ) 
+            if ((output & 0xFF00) != (s << 8))
+            {
                 cycles++;
             }
         }
@@ -105,7 +109,9 @@ CalcOperand(NESContext *context, NES* nes, ADDR_MODE mode)
         {  
             tmp = pgmbin::combineLittleEndian(RB(nes, t&0xFF), RB(nes, (t + 1)&0xFF));
             output =  tmp + regs[REG_Y];
-            if( tmp >> 8 != output >> 8 ) {
+            // if( tmp >> 8 != output >> 8 ) 
+            if ((output & 0xFF00) != (s << 8))
+            {
                 cycles++;
             }
         }
@@ -150,9 +156,9 @@ Pull( NES *nes )
 // #define OFFSET_PC() signedtmp = operand&0xFF; if( pgmbin::getBitAt<8>(operand) ){ signedtmp = (~operand)&0xFF; signedtmp = -signedtmp; }\
 //                     tmp16 = PC + signedtmp + (signedtmp > 0 ? 2:1); cycles += (tmp16>>8) == (PC>>8) ? 1:2; PC = tmp16; keep_pc = true;
 
-#define OFFSET_PC() ++cycles;\
+#define OFFSET_PC()\
     if( operand & 0x80 ) operand |= 0xFF00;\
-    if( (PC + operand) & 0xFF00 != (PC & 0xFF00) )++cycles;\
+    if( ((PC + operand) >> 8) != (PC >> 8) )++cycles;\
     PC = PC + operand;
 
 //Sets PC to ins operand
@@ -233,9 +239,9 @@ Pull( NES *nes )
 
 //Stores PC and P, disable interrupts and jumps to interrupt handler
 #define BRK() if( pgmbin::getBitAt<I_flag>(P) ){ P = pgmbin::setBitAt<B_flag>(1, P); STACK_PUSH16((PC-1)) STACK_PUSH(P) P = pgmbin::setBitAt<I_flag>(0, P); \
-              PC = pgmbin::combineLittleEndian( RB(&context->nes, 0xFFFE), RB(&context->nes, 0xFFFF)); keep_pc = true; }
+              PC = pgmbin::combineLittleEndian( RB(&context->nes, 0xFFFE), RB(&context->nes, 0xFFFF)); keep_pc = true; };
 //Recovers from interruption
-#define RTI() STACK_PULL(P) RESTORE_PC() keep_pc = true; context->nes.cpu.nmi_processing = false;
+#define RTI() STACK_PULL(P) RESTORE_PC() keep_pc = true;
 
 internal Instruction
 Evaluate(byte opcode, NESContext *context)
@@ -243,10 +249,11 @@ Evaluate(byte opcode, NESContext *context)
     Instruction I = {};
     I.label = "nop";    
     I.opcode = 0xEA;    
-    I.cycles = 0;   
+    I.cycles = 2;   
     I.addr_mode = IMPL;  
     I.keep_pc = false;
     I.offset = context->nes.cpu.PC;
+    I.clockCycle = context->nes.clockCounter;
 
     EVALUATOR_HEADER()
 
@@ -293,8 +300,8 @@ Evaluate(byte opcode, NESContext *context)
         OP( 0xd0,       "BNE rel",        2,          REL,                           COND_BRANCH(!pgmbin::getBitAt<Z_flag>(P)))
         OP( 0x30,       "BMI rel",        2,          REL,                           COND_BRANCH( pgmbin::getBitAt<N_flag>(P)))            
         OP( 0x10,       "BPL rel",        2,          REL,                           COND_BRANCH(!pgmbin::getBitAt<N_flag>(P))) 
-        OP( 0x70,       "BVC rel",        2,          REL,                           COND_BRANCH( pgmbin::getBitAt<V_flag>(P)))
         OP( 0x50,       "BVC rel",        2,          REL,                           COND_BRANCH(!pgmbin::getBitAt<V_flag>(P)))                
+        OP( 0x70,       "BVS rel",        2,          REL,                           COND_BRANCH( pgmbin::getBitAt<V_flag>(P)))
         //BITs
         OP( 0x24,       "bit zpg",        3,          ZPG,                                                       READ() BITS())
         OP( 0x2c,       "bit abs",        4,          ABS,                                                       READ() BITS())        
@@ -323,7 +330,7 @@ Evaluate(byte opcode, NESContext *context)
         //DECs
         OP( 0xc6,       "DEC zpg",        5,          ZPG,        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b))
         OP( 0xd6,     "DEC zpg,x",        6,        ZPG_X,        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b))
-        OP( 0xce,       "DEC abs",        3,          ABS,        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b))
+        OP( 0xce,       "DEC abs",        6,          ABS,        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b))
         OP( 0xde,     "DEC abs,x",        7,        ABS_X,        READ() DEC(operand) UPDATE_NZFLAGS(tmp8b) STORE(addr, tmp8b))        
         //DEX
         OP( 0xca,      "DEX impl",        2,         IMPL,                              DEC(regs[REG_X]) SET_REG(REG_X, tmp8b))
@@ -412,7 +419,7 @@ Evaluate(byte opcode, NESContext *context)
         OP( 0x40,           "RTI",        6,         IMPL,                                                               RTI())
         OP( 0x60,           "RTS",        6,         IMPL,                                                   RESTORE_PC() ++PC)      
         //BRK
-        OP( 0x00,           "brk",        1,         IMPL,                                                               BRK())  
+        OP( 0x00,           "brk",        7,         IMPL,                                                               BRK())  
         //SBCs
         OP( 0xe9,         "SBC #",        2,    IMMEDIATE,                                                               SBC())
         OP( 0xe5,       "SBC zpg",        3,          ZPG,                                                        READ() SBC())
@@ -512,12 +519,29 @@ void
 InitializeCPU(CPU_6502 *cpu, NES *nes)
 {
     memset(cpu->regs.data, 0, sizeof(cpu->regs));
-    cpu->nmi_now = cpu->nmi_processing = false;
     cpu->SP = 0xFD;
     cpu->P.flags = 0x24;
-    // cpu->PC=0xC000;
-    cpu->PC = COMBINE( RB(nes, 0xFFFD), RB(nes, 0xFFFC) );
-    // cpu->PC = pgmbin::combineLittleEndian( *RB(nes, 0xFFFC), *RB(nes, 0xFFFD) );
+    // cpu->PC = COMBINE( RB(nes, 0xFFFD), RB(nes, 0xFFFC) );
+    cpu->PC=0xC000;
+    
+    cpu->pendingCycles = 0;
+}
+
+void
+NMI(CPU_6502 *cpu, NESContext *context)
+{
+    u16 pc = cpu->PC;
+    STACK_PUSH16( pc );
+    cpu->P.B = true;
+    cpu->P.B2 = true;
+    cpu->P.I = true;
+    STACK_PUSH( cpu->P.flags );
+
+    cpu->P.I = false;
+    cpu->PC = pgmbin::combineLittleEndian( RB( &context->nes, 0xFFFA ), RB( &context->nes, 0xFFFB ));
+
+    context->deltaCycles = 8;
+    cpu->pendingCycles = 8;
 }
 
 void 
@@ -530,38 +554,23 @@ UpdateCPU(CPU_6502 *cpu, NESContext *context)
     }
 
     byte opcode = RB(&context->nes, cpu->PC);
-    context->deltaCycles = 0;
-    //if( !cpu->nmi_now ) 
-    // {
-        // cpu->nmi_processing = false;        
-    // } 
-    // else if( !cpu->nmi_processing ) 
-    if( cpu->nmi_now ) 
-    {
-        cpu->nmi_now = false;
-        cpu->nmi_processing = true;
-        u16 pc = cpu->PC;
-        STACK_PUSH16( pc );
-        cpu->P.B = true;
-        STACK_PUSH( cpu->P.flags );
-        cpu->P.I = false;
-        cpu->PC = pgmbin::combineLittleEndian( RB( &context->nes, 0xFFFA ), RB( &context->nes, 0xFFFB ));
-        opcode = RB(&context->nes, cpu->PC);
-    }
-    
+    context->deltaCycles = 0;    
     Instruction decoded = Evaluate( opcode, context );    
     if( !decoded.keep_pc ) 
     {
        cpu->PC = cpu->PC + addr_mode_length[ decoded.addr_mode ]; 
     }   
+
+    cpu->pendingCycles += decoded.cycles + context->deltaCycles - 1;
+    cpu->P.B2 = true;
+
+    decoded.cycles += context->deltaCycles;
+    context->deltaCycles += decoded.cycles;
+    context->totalCycles += context->deltaCycles;
     context->processedInstructions[ context->lastInstructionCursor++ ] = decoded;
     context->lastInstructionCursor = context->lastInstructionCursor % INSTRUCTION_BUFFER_SIZE;
     if( context->lastInstructionCursor == 0 )
     {
         context->instructionQueueOverflow = true;
     }
-
-    context->deltaCycles += decoded.cycles;
-    context->totalCycles += context->deltaCycles;
-    cpu->pendingCycles = decoded.cycles;
 }

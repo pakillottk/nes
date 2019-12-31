@@ -5,6 +5,7 @@
 #include "nes.h"
 
 void InitializeCPU(CPU_6502 *cpu);
+void NMI(CPU_6502 *cpu, NESContext *context);
 void UpdateCPU(CPU_6502 *cpu, NESContext *context);
 
 #endif // NES_CPU_H

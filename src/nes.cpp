@@ -18,6 +18,24 @@ NES_INIT(NES_Init)
     
     RUN_MODE prevRunMode = context->runMode;
     context->runMode = kPause;
+
+    // ensure to free all the resources
+    if( context->nes.cartridge.mapperData )
+    {
+        delete context->nes.cartridge.mapperData;
+    }
+    if( context->nes.cartridge.usingVRAM )
+    {
+        delete[] context->nes.cartridge.VRAM;
+    }       
+    if( context->nes.cartridge.ROM )
+    {
+        delete[] context->nes.cartridge.ROM;
+    }
+    if( context->nes.cartridge.VROM )
+    {
+        delete[] context->nes.cartridge.VROM;
+    }
     context->nes = {};
     if( LoadROM(romPath, &context->nes.cartridge) )
     {
@@ -36,37 +54,31 @@ NES_UPDATE(NES_Update)
         // generate a new frame
         context->nes.ppu.frameRendered = false;
         context->totalCycles = 0;
-        do
+        // do
         {
-            UpdatePPU(&context->nes.ppu, context);
+            UpdatePPU(&context->nes.ppu, context);           
 
-            if( context->nes.ppu.nmiRequested )
-            {
-                context->nes.ppu.nmiRequested = false;
-                context->nes.cpu.nmi_now = true;
-            }
             // the ppu is approx 3 times faster
-            for( u32 i = 0; i < 3; ++i )
+            if( context->nes.clockCounter % 3 == 0 )
             {
                 if( !context->nes.enableDMA )
                 {
                     // Regular cpu update
                     UpdateCPU(&context->nes.cpu, context);
-                    context->totalCycles += context->deltaCycles;
                 }
                 else
                 {
                     // Perform DMA
                     if( context->nes.dmaSyncFlag )
                     {
-                        if( i % 2 == 1 )
+                        if( context->nes.clockCounter % 2 == 1 )
                         {
                             context->nes.dmaSyncFlag = false;
                         }
                     }
                     else
                     {
-                        if( i % 2 == 0 )
+                        if( context->nes.clockCounter % 2 == 0 )
                         {
                             context->nes.dmaData = RB(&context->nes, context->nes.dmaPage << 8 | context->nes.dmaAddr);
                         }
@@ -84,9 +96,18 @@ NES_UPDATE(NES_Update)
                         }
                     }
                 }
+            }            
+
+            if( context->nes.ppu.nmiRequested )
+            {
+                NMI(&context->nes.cpu, context);
+                context->nes.ppu.nmiRequested = false;
             }
-        } while( !context->nes.ppu.frameRendered );        
-        
+
+            ++context->nes.clockCounter;
+        } // while( !context->nes.ppu.frameRendered ); 
+        // context->nes.clockCounter %= 3;       
+
         if( context->runMode == kStep ) 
         {
             context->runMode = kPause;

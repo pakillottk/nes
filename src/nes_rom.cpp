@@ -21,28 +21,7 @@ LoadROM(const char *romPath, NESCartridge *cartridge)
             if (header.mapper1 & 0x04)
             {                
                 fseek(fp, 512, SEEK_CUR);
-            }
-
-            // ensure to free all the resources
-            if( cartridge->mapperData )
-            {
-                delete cartridge->mapperData;
-            }
-            if( cartridge->usingVRAM )
-            {
-                delete[] cartridge->VRAM;
-            }       
-            if( cartridge->ROM )
-            {
-                delete[] cartridge->ROM;
-            }
-            if( cartridge->VROM )
-            {
-                delete[] cartridge->VROM;
-            }
-            // zero out the cartridge before reading
-            *cartridge = {};
-
+            }           
             // read all the cart data
             cartridge->mapper = ((header.mapper2 >> 4) << 4) | (header.mapper1 >> 4);
             cartridge->mirror = (header.mapper1 & 0x01) ? kVertical : kHorizontal;
