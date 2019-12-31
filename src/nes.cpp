@@ -54,7 +54,7 @@ NES_UPDATE(NES_Update)
         // generate a new frame
         context->nes.ppu.frameRendered = false;
         context->totalCycles = 0;
-        do
+        // do
         {
             UpdatePPU(&context->nes.ppu, context);           
 
