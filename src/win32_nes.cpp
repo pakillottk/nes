@@ -550,7 +550,8 @@ WinMain(HINSTANCE hInstance,
     NESAppState appState;
     appState.nesCtx = {};    
     // TODO(pgm) For now starts with debugger enabled
-    // appState.nesCtx.showDebugger = true;
+    appState.nesCtx.showDebugger = true;
+    appState.nesCtx.runMode = kPause;
     // gNesCtx.showPatternTables = true;
 
     appState.currentROM[0] = 0;

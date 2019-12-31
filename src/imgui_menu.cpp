@@ -76,18 +76,18 @@ internal const char*
 AddrModeToStr(ADDR_MODE mode)
 {
     local_persist const char *addr_mode_str[13] = 
-    {
+    {            
         "ACCUMULATOR",
         "ABS",
         "ABS_X",
         "ABS_Y",
-        "IMMEDIATE",
-        "IMPL", 
-        "IND", 
-        "X_IND",
-        "IND_Y"
-        "REL", 
-        "ZPG", 
+        "IMMEDIATE", //#
+        "IMPL", //implied
+        "IND", //indirect
+        "X_IND", //x-indexed indirect
+        "IND_Y", //indirect y-indexed
+        "REL", //relative
+        "ZPG", //zero page
         "ZPG_X",
         "ZPG_Y"
     };
@@ -110,6 +110,8 @@ DisplayInstruction(Instruction *ins)
     ImGui::NextColumn();
     ImGui::Text("%d", ins->cycles);
     ImGui::NextColumn();
+    ImGui::Text("%d", ins->clockCycle);
+    ImGui::NextColumn();
 }
 
 internal void
@@ -121,7 +123,7 @@ RenderDebugger(NESContext *nesContext)
     }
 
     ImGui::Begin("Debugger", &nesContext->showDebugger);
-        ImGui::Text("Total cycles: %d", nesContext->totalCycles);        
+        ImGui::Text("Total cycles: %d", nesContext->nes.clockCounter);        
         ImGui::SameLine();
         ImGui::Text("Frame cycles: %d", nesContext->deltaCycles);
 
@@ -179,7 +181,7 @@ RenderDebugger(NESContext *nesContext)
 
         ImGui::Separator();
 
-        ImGui::Columns(6, "ins_table_header");
+        ImGui::Columns(7, "ins_table_header");
 
         ImGui::Text("PC");
         ImGui::NextColumn();
@@ -199,10 +201,13 @@ RenderDebugger(NESContext *nesContext)
         ImGui::Text("Cycles");
         ImGui::NextColumn();
 
+        ImGui::Text("Clock");
+        ImGui::NextColumn();
+
         ImGui::Columns(1);
         ImGui::Separator();
         ImGui::BeginChild("Instructions", ImVec2(0,0), false);
-            ImGui::Columns(6, "ins_table_rows", true);
+            ImGui::Columns(7, "ins_table_rows", true);
 
             if( nesContext->instructionQueueOverflow )
             {

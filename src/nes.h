@@ -83,8 +83,6 @@ struct CPU_6502
     } P;
 
     byte SP;
-
-    bool8 nmi_now, nmi_processing;
 };
 
 struct PPU_2C02
@@ -259,10 +257,12 @@ struct Instruction
     ADDR_MODE addr_mode; // addressing mode 
     u32 operand;
     bool8 keep_pc;   // if true, pc wont be incremented
+    u64 clockCycle; // in which cycle the instruction took place
 }; // Note that length in bytes is implicit by the addr_mode
 
 struct NES
 {
+    u64 clockCounter;
     NESCartridge cartridge;
     byte RAM[ KB(2) ];
     CPU_6502 cpu;
