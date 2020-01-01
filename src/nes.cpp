@@ -20,10 +20,10 @@ NES_INIT(NES_Init)
     context->runMode = kPause;
 
     // ensure to free all the resources
-    if( context->nes.cartridge.mapperData )
-    {
-        delete context->nes.cartridge.mapperData;
-    }
+    // if( context->nes.cartridge.mapperData )
+    // {
+    //     delete context->nes.cartridge.mapperData;
+    // }
     if( context->nes.cartridge.usingVRAM )
     {
         delete[] context->nes.cartridge.VRAM;
@@ -127,8 +127,8 @@ NES_SHUTDOWN(NES_Shutdown)
             delete[] context->nes.cartridge.VRAM;
         }       
     }
-    if( context->nes.cartridge.mapperData )
-    {
-        delete context->nes.cartridge.mapperData;
-    }
+    // if( context->nes.cartridge.mapperData )
+    // {
+    //     delete context->nes.cartridge.mapperData;
+    // }
 }

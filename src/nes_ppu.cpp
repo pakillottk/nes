@@ -95,43 +95,59 @@ ReadVRAM(NES *nes, u16 addr)
     {
         mappedAddr &= 0x0FFF;
 
-        if( nes->cartridge.mirror == kVertical )
+        switch ( nes->cartridge.mirror )
         {
-            if( mappedAddr >= 0x0000 && mappedAddr <= 0x03FF )
-            {
-				data = nes->ppu.nameTable[0][mappedAddr & 0x03FF];
-            }
-			else if( mappedAddr >= 0x0400 && mappedAddr <= 0x07FF )
-            {
-				data = nes->ppu.nameTable[1][mappedAddr & 0x03FF];
-            }
-			else if (mappedAddr >= 0x0800 && mappedAddr <= 0x0BFF )
-            {
-				data = nes->ppu.nameTable[0][mappedAddr & 0x03FF];
-            }
-			else if( mappedAddr >= 0x0C00 && mappedAddr <= 0x0FFF )
-            {
-				data = nes->ppu.nameTable[1][mappedAddr & 0x03FF];
-            }
-        }
-        else // horizontal mirroring
-        {
-            if( mappedAddr >= 0x0000 && mappedAddr <= 0x03FF )
-            {
-				data = nes->ppu.nameTable[0][mappedAddr & 0x03FF];
-            }
-			else if( mappedAddr >= 0x0400 && mappedAddr <= 0x07FF )
-            {
-				data = nes->ppu.nameTable[0][mappedAddr & 0x03FF];                
-            }
-			else if( mappedAddr >= 0x0800 && mappedAddr <= 0x0BFF )
-            {
-				data = nes->ppu.nameTable[1][mappedAddr & 0x03FF];
-            }
-			else if( mappedAddr >= 0x0C00 && mappedAddr <= 0x0FFF )
-            {
-				data = nes->ppu.nameTable[1][mappedAddr & 0x03FF];
-            }
+            case kVertical:
+                if( mappedAddr >= 0x0000 && mappedAddr <= 0x03FF )
+                {
+                    data = nes->ppu.nameTable[0][mappedAddr & 0x03FF];
+                }
+                else if( mappedAddr >= 0x0400 && mappedAddr <= 0x07FF )
+                {
+                    data = nes->ppu.nameTable[1][mappedAddr & 0x03FF];
+                }
+                else if (mappedAddr >= 0x0800 && mappedAddr <= 0x0BFF )
+                {
+                    data = nes->ppu.nameTable[0][mappedAddr & 0x03FF];
+                }
+                else if( mappedAddr >= 0x0C00 && mappedAddr <= 0x0FFF )
+                {
+                    data = nes->ppu.nameTable[1][mappedAddr & 0x03FF];
+                }
+            break;
+
+            case kHorizontal:
+                if( mappedAddr >= 0x0000 && mappedAddr <= 0x03FF )
+                {
+                    data = nes->ppu.nameTable[0][mappedAddr & 0x03FF];
+                }
+                else if( mappedAddr >= 0x0400 && mappedAddr <= 0x07FF )
+                {
+                    data = nes->ppu.nameTable[0][mappedAddr & 0x03FF];                
+                }
+                else if( mappedAddr >= 0x0800 && mappedAddr <= 0x0BFF )
+                {
+                    data = nes->ppu.nameTable[1][mappedAddr & 0x03FF];
+                }
+                else if( mappedAddr >= 0x0C00 && mappedAddr <= 0x0FFF )
+                {
+                    data = nes->ppu.nameTable[1][mappedAddr & 0x03FF];
+                }
+            break;
+
+            case kOneScreenTop:
+                 if( mappedAddr >= 0x0000 && mappedAddr <= 0x0FFF )
+                 {
+                    data = nes->ppu.nameTable[0][mappedAddr & 0x03FF];
+                 }
+            break;
+
+            case kOneScreenBottom:
+                if( mappedAddr >= 0x0000 && mappedAddr <= 0x0FFF )
+                 {
+                    data = nes->ppu.nameTable[1][mappedAddr & 0x03FF];
+                 }
+            break;
         }
     }
     else if( addr >= 0x3F00 && addr <= 0x3FFF )
@@ -171,43 +187,59 @@ WriteVRAM(NES *nes, u16 addr, byte data)
     {
         mappedAddr &= 0x0FFF;
 
-        if( nes->cartridge.mirror == kVertical )
+        switch ( nes->cartridge.mirror )
         {
-            if( mappedAddr >= 0x0000 && mappedAddr <= 0x03FF )
-            {
-			    nes->ppu.nameTable[0][mappedAddr & 0x03FF] = data;
-            }
-			else if( mappedAddr >= 0x0400 && mappedAddr <= 0x07FF )
-            {
-				nes->ppu.nameTable[1][mappedAddr & 0x03FF] = data;
-            }
-			else if (mappedAddr >= 0x0800 && mappedAddr <= 0x0BFF )
-            {
-				nes->ppu.nameTable[0][mappedAddr & 0x03FF] = data;
-            }
-			else if( mappedAddr >= 0x0C00 && mappedAddr <= 0x0FFF )
-            {
-				nes->ppu.nameTable[1][mappedAddr & 0x03FF] = data;
-            }
-        }
-        else // horizontal mirroring
-        {
-            if( mappedAddr >= 0x0000 && mappedAddr <= 0x03FF )
-            {
-				nes->ppu.nameTable[0][mappedAddr & 0x03FF] = data;
-            }
-			else if( mappedAddr >= 0x0400 && mappedAddr <= 0x07FF )
-            {
-				nes->ppu.nameTable[0][mappedAddr & 0x03FF] = data;
-            }
-			else if( mappedAddr >= 0x0800 && mappedAddr <= 0x0BFF )
-            {
-				nes->ppu.nameTable[1][mappedAddr & 0x03FF] = data;
-            }
-			else if( mappedAddr >= 0x0C00 && mappedAddr <= 0x0FFF )
-            {
-				nes->ppu.nameTable[1][mappedAddr & 0x03FF] = data;
-            }
+            case kVertical:
+                if( mappedAddr >= 0x0000 && mappedAddr <= 0x03FF )
+                {
+                    nes->ppu.nameTable[0][mappedAddr & 0x03FF] = data;
+                }
+                else if( mappedAddr >= 0x0400 && mappedAddr <= 0x07FF )
+                {
+                    nes->ppu.nameTable[1][mappedAddr & 0x03FF] = data;
+                }
+                else if (mappedAddr >= 0x0800 && mappedAddr <= 0x0BFF )
+                {
+                    nes->ppu.nameTable[0][mappedAddr & 0x03FF] = data;
+                }
+                else if( mappedAddr >= 0x0C00 && mappedAddr <= 0x0FFF )
+                {
+                    nes->ppu.nameTable[1][mappedAddr & 0x03FF] = data;
+                }
+            break;
+
+            case kHorizontal:
+                if( mappedAddr >= 0x0000 && mappedAddr <= 0x03FF )
+                {
+                    nes->ppu.nameTable[0][mappedAddr & 0x03FF] = data;
+                }
+                else if( mappedAddr >= 0x0400 && mappedAddr <= 0x07FF )
+                {
+                    nes->ppu.nameTable[0][mappedAddr & 0x03FF] = data;
+                }
+                else if( mappedAddr >= 0x0800 && mappedAddr <= 0x0BFF )
+                {
+                    nes->ppu.nameTable[1][mappedAddr & 0x03FF] = data;
+                }
+                else if( mappedAddr >= 0x0C00 && mappedAddr <= 0x0FFF )
+                {
+                    nes->ppu.nameTable[1][mappedAddr & 0x03FF] = data;
+                }
+            break;
+
+            case kOneScreenTop:
+                 if( mappedAddr >= 0x0000 && mappedAddr <= 0x0FFF )
+                 {
+                    nes->ppu.nameTable[0][mappedAddr & 0x03FF] = data;
+                 }
+            break;
+
+            case kOneScreenBottom:
+                if( mappedAddr >= 0x0000 && mappedAddr <= 0x0FFF )
+                 {
+                    nes->ppu.nameTable[1][mappedAddr & 0x03FF] = data;
+                 }
+            break;
         }
     }
     else if( addr >= 0x3F00 && addr <= 0x3FFF )

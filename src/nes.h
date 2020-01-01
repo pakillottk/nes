@@ -7,7 +7,10 @@
 enum MIRRORING
 {
     kVertical,
-    kHorizontal
+    kHorizontal,
+    kOneScreenTop,
+    kOneScreenBottom,
+    kFourScreen
     // TODO(pgm) More mirroring modes
 };
 
@@ -21,6 +24,7 @@ struct NESCartridge
     u32 currentPage;
     u32 pages;
     byte *ROM;
+    bool8 hasBattery;
     byte RAM[KB(8)];
     u32 currentVPage;
     u32 vpages;

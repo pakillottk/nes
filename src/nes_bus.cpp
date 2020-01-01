@@ -59,6 +59,11 @@ MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
             return data;
         }
     }
+    else if( addr >= 0x6000 && addr <= 0x7FFF )
+    {
+        // Cartridge RAM
+        chunk = &nes->cartridge.RAM[ addr & (KB(8)-1) ];
+    }
     else if(addr >= 0x8000 && addr <= 0xFFFF) 
     { 
         // Cartridge space   

@@ -63,7 +63,7 @@ CalcOperand(NESContext *context, NES* nes, ADDR_MODE mode)
         {
             output = c + regs[REG_X];
             // if( c >> 8 != output >> 8 ) 
-            if ((output & 0xFF00) != (s << 8))
+            if ((output >> 8) != (s << 8))
             {
                 cycles++;
             }
@@ -74,7 +74,7 @@ CalcOperand(NESContext *context, NES* nes, ADDR_MODE mode)
         {
             output = c + regs[REG_Y];
             // if( c >> 8 != output >> 8 ) 
-            if ((output & 0xFF00) != (s << 8))
+            if ((output >> 8) != (s << 8))
             {
                 cycles++;
             }
@@ -110,7 +110,7 @@ CalcOperand(NESContext *context, NES* nes, ADDR_MODE mode)
             tmp = pgmbin::combineLittleEndian(RB(nes, t&0xFF), RB(nes, (t + 1)&0xFF));
             output =  tmp + regs[REG_Y];
             // if( tmp >> 8 != output >> 8 ) 
-            if ((output & 0xFF00) != (s << 8))
+            if ((output >> 8) != (s << 8))
             {
                 cycles++;
             }

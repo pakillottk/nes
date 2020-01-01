@@ -25,6 +25,7 @@ LoadROM(const char *romPath, NESCartridge *cartridge)
             // read all the cart data
             cartridge->mapper = ((header.mapper2 >> 4) << 4) | (header.mapper1 >> 4);
             cartridge->mirror = (header.mapper1 & 0x01) ? kVertical : kHorizontal;
+            cartridge->hasBattery = (header.mapper1 & 0x02) >> 1;
             ok = LoadData(cartridge, &header, fp);
         }
     }
