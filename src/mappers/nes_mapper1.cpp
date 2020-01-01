@@ -190,12 +190,33 @@ WRITE_VMAPPER(1)
 }
 READ_VMAPPER(1)
 {
+    MM1 *mm1 = (MM1*)cartridge->mapperData;
     if( cartridge->usingVRAM )
     {
         return cartridge->VRAM[addr];
     }
     else
     {
-        return cartridge->VROM[addr];
+        if( mm1->chrSwapMode == MM1::k8kb )
+        {
+            // fixed
+            return cartridge->VROM[addr];
+        }
+        else
+        {
+            // use the right bank
+            if( addr >= 0x0000 && addr <= 0x0FFF )
+            {
+                // chr0
+                return cartridge->VROM[ (KB(4) * mm1->chrBank0) + (addr & (KB(4)-1)) ];
+            }
+            else if( addr >= 0x1000 && addr <= 0x1FFF )
+            {
+                // chr1
+                return cartridge->VROM[ (KB(4) * mm1->chrBank1) + (addr & (KB(4)-1)) ];
+            }
+        } 
     }
+
+    return(0);
 }
