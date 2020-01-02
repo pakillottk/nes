@@ -148,8 +148,7 @@ READ_MAPPER(1)
 {
     MM1 *mm1 = (MM1*)cartridge->mapperData;
     byte data = 0;
-
-    // TODO(pgm) Doesn't work with no WRAM R/W
+    
     if( addr >= 0x8000 && addr <= 0xBFFF )
     {
         if( mm1->fixFirstBank )
