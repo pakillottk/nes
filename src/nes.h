@@ -3,6 +3,7 @@
 #define NES_H
 
 #include "nes_types.h"
+#include <math.h>
 
 enum MIRRORING
 {
@@ -233,7 +234,6 @@ inline double approxsin(double t)
     j = j - (int)j;
     return 20.785 * j * (j - 0.5) * (j - 1.0);
 }
-
 struct OSCPulse
 {
     const double PI = 3.14159;
@@ -284,11 +284,15 @@ struct APU_RP2A
     u32 SamplesGenerated;
 
     bool8 pulse1Enabled;
+    bool8 pulse1HaltLength;
+    byte pulse1Length;
     Sequencer pulse1Seq;
     OSCPulse pulse1OSC;
     double pulse1Sample;
 
     bool8 pulse2Enabled;
+    bool8 pulse2HaltLength;
+    byte pulse2Length;
     Sequencer pulse2Seq;
     OSCPulse pulse2OSC;
     double pulse2Sample;
