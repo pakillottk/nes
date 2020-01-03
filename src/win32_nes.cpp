@@ -422,7 +422,7 @@ Win32_InitDirectSound(HWND Window, u32 SamplesPerSecond, u32 BufferSize)
     direct_sound_create *DirectSoundCreate = (direct_sound_create*)GetProcAddress(DSoundLibrary, "DirectSoundCreate");
 
     LPDIRECTSOUND DirectSound;
-    if( !DirectSoundCreate || !SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0))  )
+    if( !DirectSoundCreate || FAILED(DirectSoundCreate(0, &DirectSound, 0))  )
     {
         // TODO(pgm) Warn about this...
         return(0);
@@ -436,7 +436,7 @@ Win32_InitDirectSound(HWND Window, u32 SamplesPerSecond, u32 BufferSize)
     WaveFormat.nBlockAlign = (WaveFormat.nChannels*WaveFormat.wBitsPerSample) / 8;
     WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;
     WaveFormat.cbSize = 0;
-    if( !SUCCEEDED(DirectSound->SetCooperativeLevel(Window, DSSCL_PRIORITY)) )
+    if( FAILED(DirectSound->SetCooperativeLevel(Window, DSSCL_PRIORITY)) )
     {
         // TODO(pgm) Warn about this...
         return(0);
@@ -446,12 +446,12 @@ Win32_InitDirectSound(HWND Window, u32 SamplesPerSecond, u32 BufferSize)
     BufferDescription.dwSize = sizeof(BufferDescription);
     BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
     LPDIRECTSOUNDBUFFER PrimaryBuffer;
-    if( !SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0)) )
+    if( FAILED(DirectSound->CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0)) )
     {
         // TODO(pgm) Warn about this...
         return(0);
     }
-    if( !SUCCEEDED(PrimaryBuffer->SetFormat(&WaveFormat)) )
+    if( FAILED(PrimaryBuffer->SetFormat(&WaveFormat)) )
     {
         // TODO(pgm) Warn about this...
         return(0);
@@ -463,13 +463,54 @@ Win32_InitDirectSound(HWND Window, u32 SamplesPerSecond, u32 BufferSize)
     BufferDescription.dwBufferBytes = BufferSize;
     BufferDescription.lpwfxFormat = &WaveFormat;
     LPDIRECTSOUNDBUFFER SecondaryBuffer;
-    if( !SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0)) )
+    if( FAILED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0)) )
     {
         // TODO(pgm) Warn about this...
         return(0);
     }
 
     return(SecondaryBuffer);
+}
+
+internal void
+Win32_FillAudioBuffer(LPDIRECTSOUNDBUFFER Buffer, DWORD BytesPerSample, DWORD ByteToLock, DWORD BytesToWrite, i16 *Samples, u32 *sampleIndex)
+{
+    VOID *Region1;
+    DWORD Region1Size;
+    VOID *Region2;
+    DWORD Region2Size;
+    if( FAILED(Buffer->Lock(ByteToLock, BytesToWrite,
+                            &Region1, &Region1Size,
+                            &Region2, &Region2Size,
+                            0)))
+    {
+        // TODO(pgm) Warn about this
+        return;
+    }
+
+    i16 *SrcSample = Samples;
+    
+    DWORD Region1SampleCount = Region1Size / BytesPerSample;
+    i16 *DestSample = (i16*)Region1;
+    for(DWORD SampleIdx = 0;
+        SampleIdx < Region1SampleCount;
+        ++SampleIdx)
+    {
+        *DestSample++ = *SrcSample++;
+        ++(*sampleIndex);
+    }
+
+    DWORD Region2SampleCount = Region2Size / BytesPerSample;
+    DestSample = (i16*)Region2;
+    for(DWORD SampleIdx = 0;
+        SampleIdx < Region2SampleCount;
+        ++SampleIdx)
+    {
+        *DestSample++ = *SrcSample++;
+        ++(*sampleIndex);
+    }
+
+    Buffer->Unlock(Region1, Region1Size, Region2, Region2Size);
 }
 
 internal LRESULT CALLBACK 
@@ -561,25 +602,25 @@ WindowProc(HWND   Window,
 
         case WM_PAINT:
         {
-            NESAppState *appState = (NESAppState*)GetWindowLongPtr(Window, GWLP_USERDATA);
-            HDC dc = GetDC(Window);
-            wglMakeCurrent(dc, appState->oglContext);
+            // NESAppState *appState = (NESAppState*)GetWindowLongPtr(Window, GWLP_USERDATA);
+            // HDC dc = GetDC(Window);
+            // wglMakeCurrent(dc, appState->oglContext);
 
-            // render the nes framebuffer
-            Win32_RenderOGL( &appState->nesCtx );    
+            // // render the nes framebuffer
+            // Win32_RenderOGL( &appState->nesCtx );    
 
-            ImGui_ImplOpenGL3_NewFrame();
-            ImGui_ImplWin32_NewFrame();            
-            ImGui::NewFrame();    
+            // ImGui_ImplOpenGL3_NewFrame();
+            // ImGui_ImplWin32_NewFrame();            
+            // ImGui::NewFrame();    
 
-            // render the NES State
-            if( Win32_RenderImGui( &appState->nesCode, &appState->nesCtx, appState->currentROM ) )
-            {
-                PostQuitMessage(0);
-            }
-            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());           
+            // // render the NES State
+            // if( Win32_RenderImGui( &appState->nesCode, &appState->nesCtx, appState->currentROM ) )
+            // {
+            //     PostQuitMessage(0);
+            // }
+            // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());           
 
-            SwapBuffers(dc);
+            // SwapBuffers(dc);
         }
         break;
         
@@ -590,6 +631,29 @@ WindowProc(HWND   Window,
     }
 
     return(Result);
+}
+
+internal bool8
+RenderEmulator(HDC *dc, NESAppState *appState)
+{
+    wglMakeCurrent(*dc, appState->oglContext);
+
+    // render the nes framebuffer
+    Win32_RenderOGL( &appState->nesCtx );    
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplWin32_NewFrame();            
+    ImGui::NewFrame();    
+
+    // render the NES State
+    if( Win32_RenderImGui( &appState->nesCode, &appState->nesCtx, appState->currentROM ) )
+    {
+        return(false);
+    }
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());           
+
+    SwapBuffers(*dc);
+    return(true);
 }
 
 int CALLBACK 
@@ -638,14 +702,21 @@ WinMain(HINSTANCE hInstance,
             hInstance,
             &appState
         );
+        HDC dc = GetDC(wnd);
 
-        u32 SamplePerSecond = 44100;
+        u32 SamplesPerSecond = 48000;
         u32 BytesPerSample = sizeof(i16);
-        u32 BufferSize = SamplePerSecond * BytesPerSample;
-        LPDIRECTSOUNDBUFFER AudioBuffer = Win32_InitDirectSound(wnd, SamplePerSecond, BufferSize);
+        u32 BufferSize = SamplesPerSecond * BytesPerSample;
+        u32 SampleIndex = 0;
+        i16 *Samples = (i16*)calloc(SamplesPerSecond, BytesPerSample);
+        LPDIRECTSOUNDBUFFER AudioBuffer = Win32_InitDirectSound(wnd, SamplesPerSecond, BufferSize);
         if( !AudioBuffer )
         {
             // TODO(pgm) warn the user
+        }
+        else
+        {
+            AudioBuffer->Play(0, 0, DSBPLAY_LOOPING);
         }
         appState.nesCode = LoadNesCode("NES.dll");
 
@@ -670,33 +741,68 @@ WinMain(HINSTANCE hInstance,
                 break;
             }
 
-            appState.nesCode.update(&appState.nesCtx);
-            if( !AudioBuffer )
+            // Get the audio system ready
+            appState.nesCtx.Audio = {};            
+            appState.nesCtx.Audio.Samples = Samples;
+
+            DWORD ByteToLock;            
+            DWORD BytesToWrite;
+            DWORD PlayCursor;
+            DWORD WriteCursor;        
+            if( AudioBuffer )
             {
-                continue;
+                // Handle audio update
+                if( FAILED(AudioBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor)) )
+                {
+                    continue;
+                }
+
+                ByteToLock = (SampleIndex * BytesPerSample) % BufferSize;            
+
+                if( ByteToLock > PlayCursor )
+                {
+                    BytesToWrite = BufferSize - ByteToLock + PlayCursor;
+                }
+                else
+                {
+                    BytesToWrite = PlayCursor - ByteToLock;
+                }        
+
+                appState.nesCtx.Audio.SamplesPerSecond = SamplesPerSecond;
+                appState.nesCtx.Audio.SampleCount = BytesToWrite / BytesPerSample;    
             }
-            
-            // Handle audio update
-            // DWORD PlayCursor;
-            // DWORD WriteCursor;
-            // if( !SUCCEEDED(AudioBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor)) )
-            // {
-            //     continue;
-            // }
 
-            // DWORD WritePointer;
-            // DWORD BytesToWrite;
+            // update the emulation to make the next frame
+            if( appState.nesCtx.nes.cartridge.loaded )
+            {
+                appState.nesCtx.nes.apu.SamplesGenerated = 0;
+                do
+                {
+                    appState.nesCode.update(&appState.nesCtx);
+                } while( !appState.nesCtx.nes.ppu.frameRendered );
 
-            // VOID *Region1;
-            // DWORD Region1Size;
-            // VOID *Region2;
-            // DWORD Region2Size;
-            // AudioBuffer->Lock(WritePointer, BytesToWrite, 
-            //                   &Region1, &Region1Size, 
-            //                   &Region2, &Region2Size, 
-            //                   0);
+                // calc missing audio samples
+                while( appState.nesCtx.nes.apu.SamplesGenerated < appState.nesCtx.Audio.SampleCount )
+                {
+                    appState.nesCode.update(&appState.nesCtx);
+                }
+            }
+
+            // Update audio
+            if( AudioBuffer ) 
+            {
+                Win32_FillAudioBuffer(AudioBuffer, BytesPerSample, ByteToLock, BytesToWrite, Samples, &SampleIndex);                   
+            }    
+
+            // Render the frame
+            RenderEmulator(&dc, &appState);
+
+            // real64 frameMs = ((real64(timeElapsed) * 1000.0) / real64(perfCounterFreq.QuadPart));
+            // u32 fps = perfCounterFreq.QuadPart / timeElapsed;
+
         }
         appState.nesCode.shutdown(&appState.nesCtx);
+        free(Samples);
     }
     else
     {

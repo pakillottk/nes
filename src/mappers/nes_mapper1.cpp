@@ -99,14 +99,14 @@ WRITE_MAPPER(1)
             case 2:
                 mm1->prgBankSize = MM1::k16kb;
                 mm1->fixFirstBank = true;
-                mm1->prgBank0 = 0;
+                // mm1->prgBank0 = 0;
             break;
 
             case 3:
                 mm1->prgBankSize = MM1::k16kb;
                 mm1->fixFirstBank = false;
                 mm1->fixLastBank = true;
-                mm1->prgBank1 = cartridge->pages - 1;
+                // mm1->prgBank1 = cartridge->pages - 1;
             break;
         }
 

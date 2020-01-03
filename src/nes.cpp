@@ -7,6 +7,7 @@
 #include "nes_mappers.cpp"
 #include "nes_rom.cpp"
 #include "nes_ppu.cpp"
+#include "nes_apu.cpp"
 #include "nes_bus.cpp"
 #include "nes_cpu.cpp"
 
@@ -42,21 +43,29 @@ NES_INIT(NES_Init)
         context->nes.dmaSyncFlag = true;
 
         InitializeCPU(&context->nes.cpu, &context->nes); 
-        InitializePPU(&context->nes.ppu);     
+        InitializePPU(&context->nes.ppu);    
+        InitializeAPU(&context->nes.apu);
     }
     context->runMode = prevRunMode;
 }
 
 NES_UPDATE(NES_Update)
 {
+    const double TIME_PER_SAMPLE = 1.0 / 48000.0;
+    const double TIME_PER_CLOCK = 1.0 / 5369318.0;    
+
     if( context->nes.cartridge.loaded && context->runMode != kPause )
     {    
         // generate a new frame
         context->nes.ppu.frameRendered = false;
+        context->hasSample = false;
         context->totalCycles = 0;
-        do
+        //do
         {
-            UpdatePPU(&context->nes.ppu, context);           
+            context->audioTime += TIME_PER_CLOCK;
+
+            UpdatePPU(&context->nes.ppu, context);     
+            UpdateAPU(context, &context->nes.apu);           
 
             // the ppu is approx 3 times faster
             if( context->nes.clockCounter % 3 == 0 )
@@ -98,6 +107,14 @@ NES_UPDATE(NES_Update)
                 }
             }            
 
+            if( context->hasSample )
+            {
+                context->audioTime -= TIME_PER_SAMPLE;
+                context->audioSample = GetSoundSample(&context->nes.apu);
+                context->hasSample = false;
+                context->Audio.Samples[ context->nes.apu.SamplesGenerated++ ] = context->audioSample;
+            }
+
             if( context->nes.ppu.nmiRequested )
             {
                 NMI(&context->nes.cpu, context);
@@ -105,8 +122,8 @@ NES_UPDATE(NES_Update)
             }
 
             ++context->nes.clockCounter;
-        } while( !context->nes.ppu.frameRendered ); 
-
+        } //while( !context->nes.ppu.frameRendered );        
+        
         if( context->runMode == kStep ) 
         {
             context->runMode = kPause;

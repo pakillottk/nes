@@ -1,5 +1,6 @@
 #include "nes_bus.h"
 #include "nes_ppu.h"
+#include "nes_apu.h"
 #include "nes_mappers.h"
 #include <assert.h>
 
@@ -27,12 +28,17 @@ MemAccess(NES *nes, u16 addr, bool8 set = false, byte v = 0)
             return ReadPPU(nes, addr);
         }
     } 
-    else if( addr >= 0x4000 && addr <= 0x4013 ) 
+    else if( (addr >= 0x4000 && addr <= 0x4013) || addr == 0x4015 || addr == 0x4017 ) 
     { 
         // APU I/O Space
-
-        //TODO(pgm) for now return 0        
-        return 0;
+        if( set )        
+        {
+            return WriteAPU(nes, addr, v);
+        }
+        else
+        {
+            return ReadAPU(nes, addr);
+        }    
     } 
     else if( addr == 0x4014 )
     {

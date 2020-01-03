@@ -201,9 +201,97 @@ struct PPU_2C02
 	u16 bgAttribHi;
 };
 
+typedef void(seq_function)(u32 *s);
+struct Sequencer
+{
+    u32 seq;
+    u16 timer;
+    u16 reload;
+    byte output;
+
+    inline byte
+    clock(bool enabled, seq_function *seqFunc)
+    {
+        if( enabled )
+        {
+            --timer;
+            if( timer == 0xFFFF )
+            {
+                timer = reload + 1;
+                seqFunc(&seq);
+                output = seq & 0x1;
+            }
+        }
+
+        return output;
+    }
+};
+
+inline double approxsin(double t)
+{
+    double j = t * 0.15915;
+    j = j - (int)j;
+    return 20.785 * j * (j - 0.5) * (j - 1.0);
+}
+
+struct OSCPulse
+{
+    const double PI = 3.14159;
+
+    double freq;
+    double dutyCycle;
+    double amplitude;
+    double harmonics;
+
+    OSCPulse()
+    {
+        freq = dutyCycle = 0;
+        amplitude = 1;
+        harmonics = 20;
+    }
+
+    OSCPulse& operator=(const OSCPulse &pulse)
+    {
+        freq = pulse.freq;
+        dutyCycle = pulse.dutyCycle;
+        amplitude = pulse.amplitude;
+        harmonics = pulse.harmonics;
+
+        return *this;
+    }
+
+    double sample(double t)
+    {
+        double a = 0;
+        double b = 0;
+        double p = dutyCycle * 2.0 * PI;
+
+        for( u32 i = 1; i <= harmonics; ++i )
+        {
+            double c = i * freq * 2.0 * PI * t;
+            a += -approxsin(c) / i;
+            b += -approxsin(c - p * i) / i;
+        }
+
+        return (2.0 * amplitude / PI) * ( a - b );
+    }
+};
+
 struct APU_RP2A 
 {
-    // TODO
+    u32 ClockCounter;
+    u32 FrameClockCounter;
+    u32 SamplesGenerated;
+
+    bool8 pulse1Enabled;
+    Sequencer pulse1Seq;
+    OSCPulse pulse1OSC;
+    double pulse1Sample;
+
+    bool8 pulse2Enabled;
+    Sequencer pulse2Seq;
+    OSCPulse pulse2OSC;
+    double pulse2Sample;
 };
 
 struct NESGamepad
@@ -294,8 +382,20 @@ enum RUN_MODE
     kStep
 };
 
+struct AudioBuffer
+{
+    u32 SamplesPerSecond;
+    i16 *Samples;
+    u32 SampleCount;
+};
+
 struct NESContext
 {
+    double globalTime;
+    bool8 hasSample;
+    double audioTime;
+    i16 audioSample;
+
     bool showDebugger;
     bool showPatternTables;
     u32 frameBufferTextId;
@@ -306,6 +406,8 @@ struct NESContext
     RUN_MODE runMode;
     u32 deltaCycles; // cycles in current frame
     u32 totalCycles; // total cycle count
+
+    AudioBuffer Audio;
     
     Instruction processedInstructions[INSTRUCTION_BUFFER_SIZE];
     u32 lastInstructionCursor;
