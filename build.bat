@@ -1,10 +1,10 @@
 @echo off
 
 ::Debug flags
-set compiler_flags=/Zi /D_DEBUG /Od
+::set compiler_flags=/Zi /D_DEBUG /Od
 
 ::Release flags
-::set compiler_flags=/O2
+set compiler_flags=/O2
 
 pushd ".\build"
     cl %compiler_flags% /D_USRDLL /D_WINDLL ..\src\nes.cpp opengl32.lib glew32.lib /link /DLL /OUT:NES.dll 

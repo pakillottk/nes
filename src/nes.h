@@ -266,7 +266,7 @@ struct OSCPulse
         double b = 0;
         double p = dutyCycle * 2.0 * PI;
 
-        for( u32 i = 1; i <= harmonics; ++i )
+        for( u32 i = 1; i < harmonics; ++i )
         {
             double c = i * freq * 2.0 * PI * t;
             a += -approxsin(c) / i;
@@ -274,6 +274,48 @@ struct OSCPulse
         }
 
         return (2.0 * amplitude / PI) * ( a - b );
+    }
+};
+
+struct OSCTriangle
+{
+    const double PI = 3.14159;
+
+    double freq;
+    double amplitude;
+    double harmonics;
+
+    OSCTriangle()
+    {
+        freq = 0;
+        amplitude = 1;
+        harmonics = 20;
+    }
+
+    OSCTriangle& operator=(const OSCTriangle &pulse)
+    {
+        freq = pulse.freq;
+        amplitude = pulse.amplitude;
+        harmonics = pulse.harmonics;
+
+        return *this;
+    }
+
+    double sample(double t)
+    {
+        double a = 0;
+        double n = 0;
+        double exp = pow(2, freq-1);
+        double sign = 1;
+
+        for( u32 i = 0; i < harmonics; ++i )
+        {
+            sign = i & 0x1 ? -1 : 1;
+            n = 2 * i + 1;
+            a += sign * (approxsin(freq * n * t) / (n * n));
+        } 
+
+        return (((8.0 * amplitude) / (PI * PI)) * a);
     }
 };
 
@@ -296,6 +338,13 @@ struct APU_RP2A
     Sequencer pulse2Seq;
     OSCPulse pulse2OSC;
     double pulse2Sample;
+
+    bool8 triangleEnabled;
+    bool8 triangleHaltLength;
+    byte triangleLength;
+    Sequencer triangleSeq;
+    OSCTriangle triangleOSC;
+    double triangleSample;
 };
 
 struct NESGamepad

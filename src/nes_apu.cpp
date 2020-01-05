@@ -127,7 +127,20 @@ WriteAPU(NES *nes, u16 addr, byte v)
         break;
 
         case 0x4008:
-            
+            nes->apu.triangleHaltLength = v & 0x80;
+            nes->apu.triangleSeq.seq = (nes->apu.triangleSeq.seq) | (v & 0x7F);
+        break;
+
+        case 0x400A:
+            nes->apu.triangleSeq.reload = ((nes->apu.triangleSeq.reload & 0xFF00) | v);
+        break;
+
+        case 0x400B:
+        {
+            nes->apu.triangleSeq.reload = ((nes->apu.triangleSeq.reload & 0x00FF) | (v & 0x7));
+            byte length = v >> 3;
+            SET_LENGTH(length, nes->apu.triangleLength);
+        }
         break;
 
         case 0x400C:
@@ -148,6 +161,11 @@ WriteAPU(NES *nes, u16 addr, byte v)
             if( !nes->apu.pulse2Enabled )
             {
                 nes->apu.pulse2Length = 0;
+            }
+            nes->apu.triangleEnabled = v & 0x4;
+            if( !nes->apu.triangleEnabled )
+            {
+                nes->apu.triangleLength = 0;
             }
         break;
 
@@ -181,10 +199,14 @@ SeqSquareWave(u32 *s)
 i16 
 GetSoundSample(APU_RP2A *apu)
 {
-    double p1 = apu->pulse1Enabled ? apu->pulse1Sample : 0;
-    double p2 = apu->pulse1Enabled ? apu->pulse2Sample : 0;
-    double pulse_out = 95.88 / ((8128 / (p1 + p2)) + 100.0);
-    return i16(10000.0 * pulse_out);
+    double p1 = apu->pulse1Sample;
+    double p2 = apu->pulse2Sample;
+    double pulse_out = 95.88 / ((8128 / (p1 + p2)) + 100.0);    
+
+    double tri = 0.0;
+    double tnd_out = 159.79 / ((1.0 / (tri / 8227.0)) + 100.0);
+
+    return i16(10000.0 * (pulse_out + tnd_out));
 }   
 
 void 
@@ -221,17 +243,23 @@ UpdateAPU(NESContext *ctx, APU_RP2A *apu)
             {
                 --apu->pulse2Length;
             }   
+            if( !apu->triangleHaltLength && apu->triangleLength > 0 )
+            {
+                --apu->triangleLength;
+            }
         }
         
         const double timePerSample = 1.0 / 44100.0;        
         apu->pulse1OSC.freq = 1789773.0 / (16.0 * (double)(apu->pulse1Seq.reload + 1));   
         apu->pulse2OSC.freq = 1789773.0 / (16.0 * (double)(apu->pulse2Seq.reload + 1)); 
+        // apu->triangleOSC.freq = 1789773.0 / (32.0 * (double)(apu->triangleSeq.reload + 1));        
              
         if( ctx->audioTime >= timePerSample ) 
         {            
             ctx->hasSample = true;
             apu->pulse1Sample = apu->pulse1Enabled && apu->pulse1Length > 0 ? apu->pulse1OSC.sample(ctx->globalTime) : 0; 
             apu->pulse2Sample = apu->pulse2Enabled && apu->pulse2Length > 0 ? apu->pulse2OSC.sample(ctx->globalTime) : 0;
+            // apu->triangleSample = apu->triangleEnabled && apu->triangleLength > 0 ? apu->triangleOSC.sample(ctx->globalTime) : 0;
         }     
     }
     ++apu->ClockCounter;

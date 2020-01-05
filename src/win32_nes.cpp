@@ -662,6 +662,13 @@ WinMain(HINSTANCE hInstance,
         LPSTR     lpCmdLine,
         int       nShowCmd)
 {
+    const real32 SecondsPerFrame = 1.0f / 60.0f;
+
+    LARGE_INTEGER perfCounterFreq;
+    QueryPerformanceFrequency(&perfCounterFreq);
+    
+    bool8 canSleep = timeBeginPeriod(1) == TIMERR_NOERROR;
+
     NESAppState appState;
     appState.nesCtx = {};    
 
@@ -719,6 +726,9 @@ WinMain(HINSTANCE hInstance,
             AudioBuffer->Play(0, 0, DSBPLAY_LOOPING);
         }
         appState.nesCode = LoadNesCode("NES.dll");
+
+        LARGE_INTEGER startCounter, endCounter;
+        QueryPerformanceCounter(&startCounter);
 
         for(;;)
         {
@@ -794,12 +804,30 @@ WinMain(HINSTANCE hInstance,
                 Win32_FillAudioBuffer(AudioBuffer, BytesPerSample, ByteToLock, BytesToWrite, Samples, &SampleIndex);                   
             }    
 
+            QueryPerformanceCounter(&endCounter);
+
+            // lock to 60 FPS
+            u64 timeElapsed = endCounter.QuadPart - startCounter.QuadPart;
+            real32 SecondsElapsed = real32(timeElapsed) / real32(perfCounterFreq.QuadPart);
+            while( SecondsElapsed < SecondsPerFrame )
+            {
+                if( canSleep )
+                {
+                    DWORD sleepMs = (DWORD)(1000.0f * (SecondsPerFrame - SecondsElapsed));
+                    Sleep(sleepMs);
+                }
+
+                QueryPerformanceCounter(&endCounter);
+                timeElapsed = endCounter.QuadPart - startCounter.QuadPart;
+                SecondsElapsed = real32(timeElapsed) / real32(perfCounterFreq.QuadPart);
+            }
+
             // Render the frame
             RenderEmulator(&dc, &appState);
 
             // real64 frameMs = ((real64(timeElapsed) * 1000.0) / real64(perfCounterFreq.QuadPart));
             // u32 fps = perfCounterFreq.QuadPart / timeElapsed;
-
+            startCounter = endCounter;
         }
         appState.nesCode.shutdown(&appState.nesCtx);
         free(Samples);
